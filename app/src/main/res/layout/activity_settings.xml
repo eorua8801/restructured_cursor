@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.settings.SettingsActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="기능 설정"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <Switch
+            android:id="@+id/switch_click_enabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="시선 고정 클릭 활성화"
+            android:layout_marginBottom="8dp"/>
+
+        <Switch
+            android:id="@+id/switch_scroll_enabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="시선 스크롤 활성화"
+            android:layout_marginBottom="8dp"/>
+
+        <Switch
+            android:id="@+id/switch_edge_scroll_enabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="화면 가장자리 스크롤 활성화"
+            android:layout_marginStart="20dp"
+            android:layout_marginBottom="8dp"/>
+
+        <Switch
+            android:id="@+id/switch_blink_detection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="눈 깜빡임 감지"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="클릭 설정"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="고정 클릭 시간"
+            android:layout_marginBottom="4dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <SeekBar
+                android:id="@+id/seekbar_fixation_duration"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="30"
+                android:progress="7"/>
+
+            <TextView
+                android:id="@+id/text_fixation_duration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1.0초"
+                android:layout_marginStart="8dp"
+                android:minWidth="60dp"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="고정 인식 영역 반지름"
+            android:layout_marginBottom="4dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <SeekBar
+                android:id="@+id/seekbar_aoi_radius"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="60"
+                android:progress="30"/>
+
+            <TextView
+                android:id="@+id/text_aoi_radius"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="40 픽셀"
+                android:layout_marginStart="8dp"
+                android:minWidth="60dp"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="스크롤 설정"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="가장자리 스크롤 시간"
+            android:layout_marginBottom="4dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <SeekBar
+                android:id="@+id/seekbar_edge_trigger_time"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="40"
+                android:progress="20"/>
+
+            <TextView
+                android:id="@+id/text_edge_trigger_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="3.0초"
+                android:layout_marginStart="8dp"
+                android:minWidth="60dp"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="연속 스크롤 횟수"
+            android:layout_marginBottom="4dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <SeekBar
+                android:id="@+id/seekbar_scroll_count"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="4"
+                android:progress="1"/>
+
+            <TextView
+                android:id="@+id/text_scroll_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2회"
+                android:layout_marginStart="8dp"
+                android:minWidth="60dp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
