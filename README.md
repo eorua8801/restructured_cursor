@@ -5,11 +5,12 @@
 2. [설치 및 설정](#2-설치-및-설정)
 3. [앱 구조 개요](#3-앱-구조-개요)
 4. [주요 컴포넌트 상세 설명](#4-주요-컴포넌트-상세-설명)
-5. [설정 파라미터 가이드](#5-설정-파라미터-가이드)
-6. [기능 수정 및 확장 가이드](#6-기능-수정-및-확장-가이드)
-7. [문제 해결 및 디버깅](#7-문제-해결-및-디버깅)
-8. [향후 개발 로드맵](#8-향후-개발-로드맵)
-9. [참고 자료](#9-참고-자료)
+5. [좌표계 통합 및 캘리브레이션 시스템](#5-좌표계-통합-및-캘리브레이션-시스템)
+6. [설정 파라미터 가이드](#6-설정-파라미터-가이드)
+7. [기능 수정 및 확장 가이드](#7-기능-수정-및-확장-가이드)
+8. [문제 해결 및 디버깅](#8-문제-해결-및-디버깅)
+9. [향후 개발 로드맵](#9-향후-개발-로드맵)
+10. [참고 자료](#10-참고-자료)
 
 ---
 
@@ -280,9 +281,199 @@ UserSettings customSettings = new UserSettings.Builder()
 
 ---
 
-## 5. 설정 파라미터 가이드
+## 5. 좌표계 통합 및 캘리브레이션 시스템
 
-### 5.1 고정 클릭 설정
+### 5.1 좌표계 통합 가이드
+
+#### 5.1.1 초기 문제 상황
+개발 과정에서 다음과 같은 좌표계 관련 문제들이 발생했습니다:
+- **캘리브레이션 문제**: 버튼 클릭은 감지되지만 실제 캘리브레이션이 실행되지 않음
+- **터치 위치 불일치**: 시선 커서의 중심이 아닌 위쪽 85px 지점에서 터치가 발생
+
+#### 5.1.2 캘리브레이션 시스템 해결 방법
+
+**문제 원인**: MainActivity와 GazeTrackingService 간 SDK 인스턴스 충돌
+
+**해결 코드**:
+```java
+// MainActivity에서 서비스 상태 확인 후 적절한 곳에서 캘리브레이션 실행
+private void startCalibration() {
+    if (isServiceRunning()) {
+        // 서비스에서 실행
+        GazeTrackingService.getInstance().triggerCalibration();
+    } else {
+        // MainActivity에서 실행
+        gazeTracker.startCalibration(calibrationType);
+    }
+}
+```
+
+**서비스-액티비티 연동**:
+- MainActivity에서 서비스 실행 상태 확인
+- 서비스가 실행 중이면 MainActivity의 tracker 해제
+- 캘리브레이션은 서비스를 우선으로 실행
+
+### 5.2 안드로이드 좌표계 분석
+
+안드로이드 시선 추적 앱에서는 **세 가지 주요 좌표계**가 상호작용합니다:
+
+#### 🖥️ 전체 화면 좌표계 (Hardware Screen)
+```
+┌─────────────────┐ Y=0 (물리적 화면 최상단)
+│   상태바 (85px)   │
+├─────────────────┤ Y=85
+│                 │
+│   앱 영역        │ (시선 추적이 실제 작동하는 영역)
+│  (2069px)       │
+├─────────────────┤ Y=2154
+│ 네비게이션바      │
+│  (126px)        │  
+└─────────────────┘ Y=2280 (물리적 화면 최하단)
+```
+
+#### 📱 앱 영역 좌표계 (App Window)
+```
+┌─────────────────┐ Y=0 (앱 영역 최상단)
+│                 │
+│   앱 컨텐츠      │ (일반적인 앱 UI가 그려지는 영역)
+│                 │
+└─────────────────┘ Y=2069 (앱 영역 최하단)
+```
+
+#### ♿ 접근성 서비스 좌표계 (Accessibility)
+```
+┌─────────────────┐ Y=0 (접근성 기준 최상단)
+│                 │
+│  제스처 감지 영역  │ (터치/클릭 이벤트 발생 영역)
+│                 │  
+└─────────────────┘ Y=2280 (접근성 기준 최하단)
+```
+
+### 5.3 좌표계 불일치 해결
+
+#### 5.3.1 문제 발견
+개발자 옵션의 터치 포인트 표시로 확인한 결과, 시선 커서 중심이 아닌 **위쪽 85px 지점**에서 터치가 발생함을 발견했습니다.
+
+#### 5.3.2 좌표계별 측정 결과
+로그 분석을 통해 확인된 화면 크기:
+```
+앱 영역: 1080 x 2069px
+전체 화면: 1080 x 2280px  
+상태바: 85px
+네비게이션바: 126px
+계산 검증: 2069 + 85 + 126 = 2280 ✅
+```
+
+#### 5.3.3 좌표계 불일치 원인
+
+**시선 추적 SDK**:
+- 앱 영역 기준으로 좌표 제공 (0~2069)
+- 예: (650, 1413)
+
+**접근성 서비스**:
+- 전체 화면 기준으로 좌표 해석 (0~2280)
+- 동일 좌표 (650, 1413)을 받으면 실제로는 (650, 1413-85) 위치에 터치
+
+**결과**:
+- 85px만큼 위에서 터치 발생
+- 시선 커서와 실제 터치 위치 불일치
+
+### 5.4 최종 해결 방법
+
+#### 5.4.1 터치 좌표 변환
+```java
+private void performClick(float x, float y) {
+    // 시선 좌표(앱 영역) → 접근성 서비스(전체 화면)
+    float adjustedX = x;
+    float adjustedY = y + statusBarHeight;  // +85px 보정
+    
+    MyAccessibilityService.performClickAt(adjustedX, adjustedY);
+}
+```
+
+#### 5.4.2 캘리브레이션 포인트 처리
+```java
+private void showCalibrationPointView(float x, float y) {
+    // SDK에서 제공하는 캘리브레이션 좌표는 이미 전체 화면 기준
+    // 오버레이도 전체 화면에 그려지므로 변환하지 않음
+    calibrationViewer.setPointPosition(x, y);
+}
+```
+
+#### 5.4.3 시선 커서 표시
+```java
+// 오버레이 커서는 전체 화면에 그려지므로 변환 불필요
+overlayCursorView.updatePosition(gazeX, gazeY);
+```
+
+### 5.5 변환 매트릭스 요약
+
+| 요소 | 입력 좌표계 | 출력 좌표계 | 변환 공식 |
+|------|------------|------------|-----------|
+| **시선 → 터치** | 앱 영역 | 접근성 (전체) | Y + 85px |
+| **시선 → 커서** | 앱 영역 | 오버레이 (전체) | 변환 없음* |
+| **캘리브레이션** | 전체 화면 | 오버레이 (전체) | 변환 없음 |
+
+*시선 커서는 앱 영역 좌표를 받지만 오버레이에 그릴 때는 SDK가 내부적으로 처리
+
+### 5.6 기기 호환성 고려사항
+
+#### 5.6.1 동적 화면 정보 수집
+```java
+// 앱 영역 크기
+DisplayMetrics dm = getResources().getDisplayMetrics();
+int appHeight = dm.heightPixels;
+
+// 전체 화면 크기  
+DisplayMetrics realMetrics = new DisplayMetrics();
+windowManager.getDefaultDisplay().getRealMetrics(realMetrics);
+int realHeight = realMetrics.heightPixels;
+
+// 상태바 높이
+int statusBarHeight = getStatusBarHeight();
+```
+
+#### 5.6.2 다양한 화면 구성 대응
+- **표준형**: 상태바 + 앱 + 네비게이션바
+- **제스처형**: 상태바 + 앱 (얇은 제스처 바)
+- **하드웨어**: 상태바 + 앱 (물리 버튼)
+- **특수형**: 노치, 펀치홀, 폴더블 등
+
+#### 5.6.3 좌표 변환 유틸리티 구현
+```java
+public class CoordinateManager {
+    private int statusBarHeight;
+    private int navigationBarHeight;
+    private int appHeight;
+    private int realHeight;
+    
+    public CoordinateManager(Context context) {
+        // 화면 정보 초기화
+        initScreenInfo(context);
+    }
+    
+    // 시선 좌표를 접근성 좌표로 변환
+    public PointF gazeToAccessibility(float gazeX, float gazeY) {
+        return new PointF(gazeX, gazeY + statusBarHeight);
+    }
+    
+    // 접근성 좌표를 시선 좌표로 변환
+    public PointF accessibilityToGaze(float accessX, float accessY) {
+        return new PointF(accessX, accessY - statusBarHeight);
+    }
+    
+    // 기기별 화면 정보 감지
+    private void initScreenInfo(Context context) {
+        // 구현...
+    }
+}
+```
+
+---
+
+## 6. 설정 파라미터 가이드
+
+### 6.1 고정 클릭 설정
 
 | 파라미터 | 설명 | 기본값 | 권장 범위 | 영향 |
 |---------|------|--------|----------|------|
@@ -300,7 +491,7 @@ aoiRadiusBar.setMax(60);         // 10-70px 범위
 private float fixationDurationMs = 800f; // 기본값을 800ms로 변경
 ```
 
-### 5.2 스크롤 설정
+### 6.2 스크롤 설정
 
 | 파라미터 | 설명 | 기본값 | 권장 범위 | 영향 |
 |---------|------|--------|----------|------|
@@ -321,7 +512,7 @@ private static final float SCROLL_AMOUNT_LARGE = 0.25f;  // 화면 높이의 25%
 private static final int EDGE_THRESHOLD_FRAMES = 3; // 더 빠른 가장자리 인식을 위해 3으로 감소
 ```
 
-### 5.3 UI 및 피드백 설정
+### 6.3 UI 및 피드백 설정
 
 | 파라미터 | 설명 | 위치 | 수정 방법 |
 |---------|------|------|----------|
@@ -342,9 +533,9 @@ vibrator.vibrate(200); // 진동 시간을 200ms로 변경
 
 ---
 
-## 6. 기능 수정 및 확장 가이드
+## 7. 기능 수정 및 확장 가이드
 
-### 6.1 고급 사용 테크닉: 눈 감기를 통한 정밀 클릭
+### 7.1 고급 사용 테크닉: 눈 감기를 통한 정밀 클릭
 
 개발 과정에서 발견된 흥미로운 사용 테크닉으로, 눈을 감아 커서를 고정하는 방법이 있습니다. 이 방법은 정밀한 클릭이 필요한 상황에서 매우 유용합니다.
 
@@ -378,9 +569,7 @@ if (userStatusInfo.leftOpenness < 0.2 && userStatusInfo.rightOpenness < 0.2) {
 }
 ```
 
-이 테크닉을 더 발전시켜 "정밀 모드" 같은 명시적 기능으로 구현할 수도 있습니다. 예를 들어, 눈을 감았을 때 커서 주변에 "정밀 모드 활성화" 같은 시각적 표시를 추가하는 것이 가능합니다.
-
-### 6.2 새로운 제스처 추가하기
+### 7.2 새로운 제스처 추가하기
 
 새로운 시선 기반 제스처를 추가하려면 다음 단계를 따르세요:
 
@@ -434,7 +623,7 @@ if (userStatusInfo.leftOpenness < 0.2 && userStatusInfo.rightOpenness < 0.2) {
    - `SettingsActivity`에 UI 요소 추가
    - `SharedPrefsSettingsRepository`에 저장/로드 로직 추가
 
-### 6.2 필터링 최적화하기
+### 7.3 필터링 최적화하기
 
 시선 추적 데이터 필터링을 최적화하려면 다음을 조정하세요:
 
@@ -475,7 +664,7 @@ if (userStatusInfo.leftOpenness < 0.2 && userStatusInfo.rightOpenness < 0.2) {
    }
    ```
 
-### 6.3 눈 깜빡임 감지 기능 구현하기
+### 7.4 눈 깜빡임 감지 기능 구현하기
 
 Eyedid SDK의 BlinkInfo 클래스를 활용하여 눈 깜빡임 감지 기능을 구현하려면:
 
@@ -501,7 +690,7 @@ Eyedid SDK의 BlinkInfo 클래스를 활용하여 눈 깜빡임 감지 기능을
 3. **GazeTrackingService에 통합**
    - 주석 처리된 코드 활성화 및 수정
 
-### 6.4 새로운 UI 컴포넌트 추가하기
+### 7.5 새로운 UI 컴포넌트 추가하기
 
 새로운 UI 컴포넌트를 추가하려면:
 
@@ -525,19 +714,50 @@ Eyedid SDK의 BlinkInfo 클래스를 활용하여 눈 깜빡임 감지 기능을
 
 ---
 
-## 7. 문제 해결 및 디버깅
+## 8. 문제 해결 및 디버깅
 
-### 7.1 일반적인 문제 및 해결 방법
+### 8.1 일반적인 문제 및 해결 방법
 
 | 문제 | 가능한 원인 | 해결 방법 |
 |-----|-----------|---------|
 | 시선 추적이 시작되지 않음 | SDK 라이센스 키 오류 | EyedidTrackingRepository.java의 LICENSE_KEY 확인 |
 | 시선 커서가 떨림 | 필터링 부족 | OneEuroFilterManager 파라미터 조정 |
 | 클릭이 실행되지 않음 | 접근성 서비스 비활성화 | 접근성 설정에서 앱 활성화 확인 |
+| 터치 위치가 부정확함 | 좌표계 변환 문제 | performClick() 메서드에서 상태바 높이 보정 확인 |
+| 캘리브레이션이 작동하지 않음 | 서비스-액티비티 간 SDK 인스턴스 충돌 | 서비스 실행 중일 때 서비스에서 캘리브레이션 실행 |
 | 앱 충돌 발생 | 권한 문제 | Logcat에서 오류 확인 및 권한 설정 확인 |
-| 커서와 실제 시선 위치 불일치 | 캘리브레이션 필요 | 캘리브레이션 실행 |
 
-### 7.2 로그 활용 가이드
+### 8.2 좌표계 관련 디버깅
+
+좌표계 문제를 디버깅하려면:
+
+1. **개발자 옵션 활용**
+   - 설정 > 개발자 옵션 > 터치 포인트 표시 활성화
+   - 시선 클릭 시 터치 지점과 커서 위치 비교
+
+2. **로그 출력으로 확인**
+   ```java
+   // 터치 실행 시 로그 출력
+   private void performClick(float x, float y) {
+       float adjustedY = y + statusBarHeight;
+       Log.d(TAG, String.format("Original: (%.1f, %.1f), Adjusted: (%.1f, %.1f)", 
+               x, y, x, adjustedY));
+       MyAccessibilityService.performClickAt(x, adjustedY);
+   }
+   ```
+
+3. **화면 정보 확인**
+   ```java
+   // 앱 시작 시 화면 정보 로그 출력
+   private void printScreenInfo() {
+       Log.d(TAG, "App Height: " + dm.heightPixels);
+       Log.d(TAG, "Real Height: " + realHeight);
+       Log.d(TAG, "Status Bar: " + statusBarHeight);
+       Log.d(TAG, "Navigation Bar: " + (realHeight - dm.heightPixels - statusBarHeight));
+   }
+   ```
+
+### 8.3 로그 활용 가이드
 
 각 클래스에는 로깅 코드가 포함되어 있습니다. `TAG` 필터를 사용하여 특정 컴포넌트의 로그만 확인할 수 있습니다.
 
@@ -547,14 +767,15 @@ GazeTrackingService
 ClickDetector
 EdgeScrollDetector
 MyAccessibilityService
+CoordinateManager
 ```
 
-### 7.3 성능 프로파일링
+### 8.4 성능 프로파일링
 
 앱의 성능을 모니터링하려면:
 
-1. Android Studio의 CPU Profiler 사용
-2. 각 메서드에 성능 측정 로그 추가:
+1. **Android Studio의 CPU Profiler 사용**
+2. **각 메서드에 성능 측정 로그 추가**:
    ```java
    long startTime = System.currentTimeMillis();
    // 측정할 코드
@@ -562,35 +783,76 @@ MyAccessibilityService
    Log.d(TAG, "Method execution time: " + (endTime - startTime) + "ms");
    ```
 
+3. **메모리 누수 확인**:
+   - 오버레이 뷰가 제대로 제거되는지 확인
+   - 서비스 중지 시 모든 리소스가 해제되는지 확인
+
 ---
 
-## 8. 향후 개발 로드맵
+## 9. 향후 개발 로드맵
 
-### 8.1 개선 계획
+### 9.1 개선 계획
 - **눈 깜빡임 감지 구현**: 현재 주석 처리된 코드 완성
 - **다중 제스처 지원**: 새로운 시선 제스처 추가
 - **머신러닝 기반 필터링**: 사용자별 움직임 패턴 학습 및 적용
 - **다크 모드 지원**: 시각적 요소의 다크 모드 대응
+- **다중 디스플레이 지원**: 외부 모니터 연결 시 좌표 처리 개선
+- **실시간 좌표계 감지**: 화면 회전, 폴더블 접힘/펼침 대응
 
-### 8.2 기술 부채 목록
+### 9.2 기술 부채 목록
 - **SDK 버전 업데이트**: 최신 Eyedid SDK 대응
 - **클린 아키텍처 완성**: 일부 클래스의 직접 참조 제거
 - **단위 테스트 추가**: 핵심 로직에 대한 테스트 케이스 작성
+- **좌표 변환 로직 최적화**: CPU 사용량 최적화
+
+### 9.3 추가 기능 아이디어
+- **적응형 캘리브레이션**: 사용 패턴에 따른 자동 캘리브레이션 조정
+- **접근성 향상**: 시각 장애인을 위한 음성 피드백 기능
+- **정밀도 향상**: AI 기반 시선 예측 알고리즘 적용
+- **앱 간 연동**: 다른 앱의 특정 UI 요소에 대한 최적화된 제스처
 
 ---
 
-## 9. 참고 자료
+## 10. 참고 자료
 
-### 9.1 Eyedid SDK 문서
+### 10.1 Eyedid SDK 문서
 - [SDK 개요](https://docs.eyedid.ai/docs/document/eyedid-sdk-overview)
 - [안드로이드 퀵 스타트 가이드](https://docs.eyedid.ai/docs/quick-start/android-quick-start)
 - [API 문서](https://docs.eyedid.ai/docs/api/android-api-docs/)
 - [캘리브레이션 가이드](https://docs.eyedid.ai/docs/document/calibration-overview)
 
-### 9.2 샘플 프로젝트
+### 10.2 샘플 프로젝트
 - [공식 샘플 앱](https://github.com/visualcamp/eyedid-android-sample)
 - [Flutter SDK](https://github.com/visualcamp/eyedid-flutter-sdk)
 
-### 9.3 안드로이드 개발 관련
+### 10.3 안드로이드 개발 관련
 - [안드로이드 접근성 서비스 가이드](https://developer.android.com/guide/topics/ui/accessibility/service)
 - [시스템 오버레이 가이드](https://developer.android.com/reference/android/view/WindowManager.LayoutParams#TYPE_APPLICATION_OVERLAY)
+- [DisplayMetrics 문서](https://developer.android.com/reference/android/util/DisplayMetrics)
+- [원-유로 필터 논문](https://cristal.univ-lille.fr/~casiez/1euro/)
+
+### 10.4 좌표계 및 UI 개발
+- [안드로이드 화면 좌표계 이해](https://developer.android.com/guide/topics/graphics/2d-graphics)
+- [접근성 서비스 좌표 시스템](https://developer.android.com/guide/topics/ui/accessibility/principles)
+- [윈도우 매니저 레이아웃 파라미터](https://developer.android.com/reference/android/view/WindowManager.LayoutParams)
+
+---
+
+## 부록: 개발 과정에서 학습한 팁
+
+### A.1 좌표계 변환 검증 방법
+1. 개발자 옵션의 터치 포인트 표시 활용
+2. 각 좌표계별 화면 정보 로깅
+3. 단계별 좌표 변환 확인
+
+### A.2 성능 최적화 팁
+1. 시선 데이터 필터링 파라미터 조정
+2. UI 업데이트 빈도 최적화
+3. 메모리 누수 방지 (오버레이 뷰 관리)
+
+### A.3 사용자 경험 개선
+1. 진동 피드백을 통한 명확한 상호작용 표시
+2. 시각적 진행 표시기로 사용자 안내
+3. 설정 화면을 통한 개인화 지원
+
+이 통합 가이드는 Eyedid SDK를 사용한 안드로이드 시선 추적 앱 개발의 모든 측면을 다룹니다. 좌표계 문제부터 고급 최적화 기법까지, 실제 개발 과정에서 마주칠 수 있는 다양한 상황에 대한 해결책을 제시합니다.
