@@ -9,6 +9,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.util.DisplayMetrics;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -72,7 +73,11 @@ public class MyAccessibilityService extends AccessibilityService {
             GestureDescription.Builder gestureBuilder = new GestureDescription.Builder();
             gestureBuilder.addStroke(clickStroke);
 
-            Log.d(TAG, "클릭 실행: x=" + x + ", y=" + y);
+            Log.d(TAG, "클릭 실행 (접근성 서비스): x=" + x + ", y=" + y);
+
+            // 화면 크기 정보도 로그에 출력
+            DisplayMetrics dm = instance.getResources().getDisplayMetrics();
+            Log.d(TAG, "화면 크기: " + dm.widthPixels + "x" + dm.heightPixels);
 
             instance.dispatchGesture(gestureBuilder.build(), new GestureResultCallback() {
                 @Override

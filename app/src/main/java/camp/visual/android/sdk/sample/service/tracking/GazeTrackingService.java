@@ -31,6 +31,7 @@ import camp.visual.android.sdk.sample.domain.interaction.ClickDetector;
 import camp.visual.android.sdk.sample.domain.interaction.EdgeScrollDetector;
 import camp.visual.android.sdk.sample.domain.model.UserSettings;
 import camp.visual.android.sdk.sample.service.accessibility.MyAccessibilityService;
+import camp.visual.android.sdk.sample.ui.main.MainActivity;
 import camp.visual.android.sdk.sample.ui.views.CalibrationViewer;
 import camp.visual.android.sdk.sample.ui.views.OverlayCursorView;
 import camp.visual.eyedid.gazetracker.callback.CalibrationCallback;
@@ -70,22 +71,13 @@ public class GazeTrackingService extends Service {
     private boolean isCalibrating = false;
     private boolean skipProgress = false;
 
-/*
-    // 눈 깜빡임 감지용 변수
-    private boolean lastBlinkState = false;
-    private long blinkStartTime = 0;
-    private long totalBlinkDuration = 0;
-    private int blinkCount = 0;
+    // 서비스 인스턴스 (캘리브레이션 트리거용)
+    private static GazeTrackingService instance;
 
-    // 과도한 깜빡임 탐지 변수
-    private static final int RAPID_BLINK_COUNT = 5; // 5회 이상이면 과도한 깜빡임으로 간주
-    private static final long RAPID_BLINK_WINDOW_MS = 3000; // 3초 내
-    private long[] recentBlinkTimes = new long[RAPID_BLINK_COUNT];
-    private int recentBlinkIndex = 0;
-*/
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
 
         // 초기화
         initRepositories();
@@ -155,6 +147,12 @@ public class GazeTrackingService extends Service {
         calibrationParams.gravity = Gravity.TOP | Gravity.START;
         windowManager.addView(calibrationViewer, calibrationParams);
         calibrationViewer.setVisibility(View.INVISIBLE);
+
+        // 커서 뷰가 생성된 후 좌표 보정 확인
+        handler.post(() -> {
+            int statusBarHeight = getStatusBarHeight();
+            Log.d(TAG, "오버레이 뷰 상태바 높이: " + statusBarHeight);
+        });
     }
 
     private void initGazeTracker() {
@@ -166,6 +164,7 @@ public class GazeTrackingService extends Service {
                 Log.d(TAG, "GazeTracker 초기화 성공");
             } else {
                 Log.e(TAG, "GazeTracker 초기화 실패: " + error);
+                Toast.makeText(this, "시선 추적 초기화 실패", Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -200,45 +199,7 @@ public class GazeTrackingService extends Service {
                 if (!isCalibrating) {
                     overlayCursorView.updatePosition(safeX, safeY);
                     lastValidTimestamp = System.currentTimeMillis();
-/*
-                    // 눈 깜빡임 처리 - 직접 구현
-                    if (userSettings.isBlinkDetectionEnabled()) {
-                        // UserStatusInfo에서 눈 상태 확인하여 깜빡임 감지
-                        // 일반적으로 0.3 이하는 눈을 감은 상태로 간주
-                        boolean isEyeOpen = (userStatusInfo.leftOpenness > 0.3 && userStatusInfo.rightOpenness > 0.3);
-                        boolean isBlinking = !isEyeOpen;
 
-                        // 깜빡임 시작 감지
-                        if (isBlinking && !lastBlinkState) {
-                            blinkStartTime = System.currentTimeMillis();
-                            lastBlinkState = true;
-                            Log.d(TAG, "눈 깜빡임 시작 감지");
-                        }
-                        // 깜빡임 종료 감지
-                        else if (!isBlinking && lastBlinkState) {
-                            long endTime = System.currentTimeMillis();
-                            long duration = endTime - blinkStartTime;
-                            totalBlinkDuration += duration;
-                            blinkCount++;
-                            lastBlinkState = false;
-
-                            // 최근 깜빡임 기록
-                            recentBlinkTimes[recentBlinkIndex] = endTime;
-                            recentBlinkIndex = (recentBlinkIndex + 1) % RAPID_BLINK_COUNT;
-
-                            Log.d(TAG, "눈 깜빡임 종료: " + duration + "ms, 총 " + blinkCount + "회");
-
-                            // 과도한 깜빡임 탐지
-                            if (isRapidBlinking()) {
-                                Log.w(TAG, "과도한 눈 깜빡임 감지! " + RAPID_BLINK_COUNT + "회 / "
-                                        + (RAPID_BLINK_WINDOW_MS/1000) + "초");
-
-                                // 추가 조치가 필요한 경우 여기에 구현
-                                vibrator.vibrate(new long[]{0, 100, 100, 100}, -1); // 특별한 진동 패턴
-                            }
-                        }
-                    }
-*/
                     // 엣지 스크롤 탐지
                     EdgeScrollDetector.Edge edge = edgeScrollDetector.update(safeY, screenHeight);
 
@@ -279,32 +240,10 @@ public class GazeTrackingService extends Service {
         @Override
         public void onDrop(long timestamp) {}
     };
-/*
-    // 과도한 깜빡임 탐지 메소드
-    private boolean isRapidBlinking() {
-        if (blinkCount < RAPID_BLINK_COUNT) {
-            return false;
-        }
 
-        long latestTime = recentBlinkTimes[(recentBlinkIndex + RAPID_BLINK_COUNT - 1) % RAPID_BLINK_COUNT];
-        long earliestTime = recentBlinkTimes[recentBlinkIndex];
-
-        // 배열이 다 채워지지 않았을 때 초기값(0)인 경우 처리
-        if (earliestTime == 0) {
-            return false;
-        }
-
-        return (latestTime - earliestTime) < RAPID_BLINK_WINDOW_MS;
-    }
-*/
     private void resetAll() {
         edgeScrollDetector.resetAll();
         clickDetector.reset();
-/*
-        // 깜빡임 감지 변수 초기화
-        lastBlinkState = false;
-        blinkStartTime = 0;
-*/
         overlayCursorView.setCursorText("●"); // 기본 커서로 복귀
         overlayCursorView.setTextPosition(false); // 기본 위치 복원
         overlayCursorView.setProgress(0f);
@@ -351,9 +290,45 @@ public class GazeTrackingService extends Service {
     }
 
     private void performClick(float x, float y) {
-        Log.d(TAG, "Click at (" + x + ", " + y + ")");
+        Log.d(TAG, "클릭 실행 (원본 시선 좌표): (" + x + ", " + y + ")");
+
+        // 화면 정보 수집
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        int statusBarHeight = getStatusBarHeight();
+        int navigationBarHeight = getNavigationBarHeight();
+
+        Log.d(TAG, "앱 영역: " + dm.widthPixels + "x" + dm.heightPixels);
+        Log.d(TAG, "상태바: " + statusBarHeight + "px, 네비게이션바: " + navigationBarHeight + "px");
+
+        // 🔥 반대로! 상태바 높이를 더하기
+        // 시선 좌표가 앱 영역 기준이고, 접근성 서비스가 전체 화면 기준으로 해석하는 경우
+        float adjustedX = x;
+        float adjustedY = y + statusBarHeight;
+
+        // 범위 제한 없이 일단 테스트
+        Log.d(TAG, "클릭 실행 (상태바 높이 추가): (" + adjustedX + ", " + adjustedY + ")");
+        Log.d(TAG, "보정량: Y축 +" + statusBarHeight + "px");
+
         vibrator.vibrate(100);
-        MyAccessibilityService.performClickAt(x, y);
+        MyAccessibilityService.performClickAt(adjustedX, adjustedY);
+    }
+
+    // 상태바 높이 계산 (화면 위쪽)
+    private int getStatusBarHeight() {
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            return getResources().getDimensionPixelSize(resourceId);
+        }
+        return 0;
+    }
+
+    // 네비게이션바 높이 계산 (화면 아래쪽)
+    private int getNavigationBarHeight() {
+        int resourceId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            return getResources().getDimensionPixelSize(resourceId);
+        }
+        return 0;
     }
 
     private final CalibrationCallback calibrationCallback = new CalibrationCallback() {
@@ -388,11 +363,20 @@ public class GazeTrackingService extends Service {
     };
 
     private void showCalibrationPointView(final float x, final float y) {
+        Log.d(TAG, "캘리브레이션 포인트 (SDK 좌표): (" + x + ", " + y + ")");
+
+        // 🔥 캘리브레이션 포인트는 오버레이에 표시되므로
+        // SDK에서 제공하는 좌표를 그대로 사용 (변환하지 않음)
+        float adjustedX = x;
+        float adjustedY = y;
+
+        Log.d(TAG, "캘리브레이션 포인트 (최종): (" + adjustedX + ", " + adjustedY + ")");
+
         skipProgress = true;
         calibrationViewer.setPointAnimationPower(0);
         calibrationViewer.setEnableText(true);
         calibrationViewer.nextPointColor();
-        calibrationViewer.setPointPosition(x, y);
+        calibrationViewer.setPointPosition(adjustedX, adjustedY);
 
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (trackingRepository.getTracker() != null) {
@@ -411,17 +395,79 @@ public class GazeTrackingService extends Service {
         });
     }
 
+    /**
+     * 서비스에서 캘리브레이션을 트리거하는 메서드
+     */
     public void triggerCalibration() {
-        if (trackingRepository.getTracker() != null) {
+        Log.d(TAG, "캘리브레이션 트리거 요청됨");
+
+        if (trackingRepository == null) {
+            Log.e(TAG, "trackingRepository가 null입니다");
+            Toast.makeText(this, "시선 추적 시스템이 초기화되지 않았습니다", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (trackingRepository.getTracker() == null) {
+            Log.e(TAG, "GazeTracker가 null입니다");
+            Toast.makeText(this, "시선 추적기가 초기화되지 않았습니다", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (isCalibrating) {
+            Log.w(TAG, "이미 캘리브레이션 진행 중입니다");
+            Toast.makeText(this, "이미 캘리브레이션이 진행 중입니다", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Log.d(TAG, "캘리브레이션 시작 시도");
+
+        // UI 업데이트 (메인 스레드에서)
+        handler.post(() -> {
             isCalibrating = true;
             overlayCursorView.setVisibility(View.INVISIBLE);
+
+            // 캘리브레이션 시작
             boolean ok = trackingRepository.getTracker().startCalibration(CalibrationModeType.DEFAULT);
+            Log.d(TAG, "GazeTracker.startCalibration() 결과: " + ok);
+
             if (!ok) {
+                Log.e(TAG, "캘리브레이션 시작 실패");
                 isCalibrating = false;
                 overlayCursorView.setVisibility(View.VISIBLE);
-                Toast.makeText(this, "캘리브레이션 시작 실패", Toast.LENGTH_SHORT).show();
+                Toast.makeText(GazeTrackingService.this, "캘리브레이션 시작 실패", Toast.LENGTH_SHORT).show();
+            } else {
+                Log.d(TAG, "캘리브레이션 시작 성공");
+                Toast.makeText(GazeTrackingService.this, "캘리브레이션을 시작합니다", Toast.LENGTH_SHORT).show();
             }
+        });
+    }
+
+    /**
+     * MainActivity에서 캘리브레이션을 실행할 수 있도록 하는 메서드
+     */
+    public static void triggerMainActivityCalibration() {
+        if (MainActivity.getInstance() != null) {
+            MainActivity.getInstance().triggerCalibrationFromService();
+        } else {
+            Log.w(TAG, "MainActivity 인스턴스를 찾을 수 없습니다");
         }
+    }
+
+    /**
+     * 현재 서비스 인스턴스를 반환
+     */
+    public static GazeTrackingService getInstance() {
+        return instance;
+    }
+
+    /**
+     * 사용자 설정을 새로고침하는 메서드
+     */
+    public void refreshSettings() {
+        userSettings = settingsRepository.getUserSettings();
+        clickDetector = new ClickDetector(userSettings);
+        edgeScrollDetector = new EdgeScrollDetector(userSettings, this);
+        Log.d(TAG, "사용자 설정이 새로고침되었습니다");
     }
 
     // 추가된 메소드: 접근성 서비스 활성화 여부 확인
@@ -429,7 +475,7 @@ public class GazeTrackingService extends Service {
         if (MyAccessibilityService.getInstance() == null) {
             // 메인 액티비티가 없을 때도 작동하도록 Toast로 간단하게 알림
             Toast.makeText(this, "접근성 서비스가 활성화되지 않았습니다. 설정에서 활성화해주세요.", Toast.LENGTH_LONG).show();
-            Log.d(TAG, "접근성 서비스가 활성화되지 않음. 기능 제한됨.");
+            Log.w(TAG, "접근성 서비스가 활성화되지 않음. 기능 제한됨.");
         } else {
             Toast.makeText(this, "시선 추적 서비스가 시작되었습니다.", Toast.LENGTH_SHORT).show();
             Log.d(TAG, "접근성 서비스 활성화됨. 모든 기능 사용 가능.");
@@ -438,27 +484,44 @@ public class GazeTrackingService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        return START_STICKY;
+        Log.d(TAG, "서비스 시작됨");
+        return START_STICKY; // 시스템에 의해 종료되어도 자동 재시작
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (overlayCursorView != null) {
-            windowManager.removeView(overlayCursorView);
+        Log.d(TAG, "서비스 종료됨");
+
+        // 뷰 제거
+        if (overlayCursorView != null && windowManager != null) {
+            try {
+                windowManager.removeView(overlayCursorView);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "커서 뷰 제거 중 오류: " + e.getMessage());
+            }
         }
-        if (calibrationViewer != null) {
-            windowManager.removeView(calibrationViewer);
+        if (calibrationViewer != null && windowManager != null) {
+            try {
+                windowManager.removeView(calibrationViewer);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "캘리브레이션 뷰 제거 중 오류: " + e.getMessage());
+            }
         }
-        if (trackingRepository.getTracker() != null) {
+
+        // 시선 추적 중지
+        if (trackingRepository != null && trackingRepository.getTracker() != null) {
             trackingRepository.stopTracking();
         }
+
+        // 인스턴스 정리
+        instance = null;
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return null; // 바인드 서비스가 아님
     }
 
     private void createNotificationChannel() {
@@ -468,8 +531,11 @@ public class GazeTrackingService extends Service {
                     "시선 추적 서비스 채널",
                     NotificationManager.IMPORTANCE_LOW
             );
+            serviceChannel.setDescription("시선 추적 서비스가 백그라운드에서 실행 중입니다");
             NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.createNotificationChannel(serviceChannel);
+            if (manager != null) {
+                manager.createNotificationChannel(serviceChannel);
+            }
         }
     }
 }
