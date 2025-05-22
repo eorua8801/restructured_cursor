@@ -30,6 +30,81 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:text="커서 위치 미세 조정"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="💡 팁: 자동 보정 후 미세 조정하시면 더 정확합니다"
+            android:textSize="12sp"
+            android:textStyle="italic"
+            android:textColor="#666666"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="커서 좌우 위치 (← 왼쪽 | 오른쪽 →)"
+            android:layout_marginBottom="4dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <SeekBar
+                android:id="@+id/seekbar_cursor_offset_x"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="50"/>
+
+            <TextView
+                android:id="@+id/text_cursor_offset_x"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 px"
+                android:layout_marginStart="8dp"
+                android:minWidth="60dp"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="커서 상하 위치 (↑ 위쪽 | 아래쪽 ↓)"
+            android:layout_marginBottom="4dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <SeekBar
+                android:id="@+id/seekbar_cursor_offset_y"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="50"/>
+
+            <TextView
+                android:id="@+id/text_cursor_offset_y"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 px"
+                android:layout_marginStart="8dp"
+                android:minWidth="60dp"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:text="기능 설정"
             android:textSize="18sp"
             android:textStyle="bold"

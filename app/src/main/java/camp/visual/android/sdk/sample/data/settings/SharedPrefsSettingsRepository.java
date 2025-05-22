@@ -19,6 +19,8 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
     private static final String KEY_EDGE_SCROLL_ENABLED = "edge_scroll_enabled";
     private static final String KEY_BLINK_DETECTION_ENABLED = "blink_detection_enabled";
     private static final String KEY_AUTO_ONE_POINT_CALIBRATION = "auto_one_point_calibration";
+    private static final String KEY_CURSOR_OFFSET_X = "cursor_offset_x";
+    private static final String KEY_CURSOR_OFFSET_Y = "cursor_offset_y";
 
     private final SharedPreferences prefs;
 
@@ -39,6 +41,8 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
                 .edgeScrollEnabled(prefs.getBoolean(KEY_EDGE_SCROLL_ENABLED, true))
                 .blinkDetectionEnabled(prefs.getBoolean(KEY_BLINK_DETECTION_ENABLED, false))
                 .autoOnePointCalibrationEnabled(prefs.getBoolean(KEY_AUTO_ONE_POINT_CALIBRATION, true))
+                .cursorOffsetX(prefs.getFloat(KEY_CURSOR_OFFSET_X, 0f))
+                .cursorOffsetY(prefs.getFloat(KEY_CURSOR_OFFSET_Y, 0f))
                 .build();
     }
 
@@ -55,11 +59,23 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
         editor.putBoolean(KEY_EDGE_SCROLL_ENABLED, settings.isEdgeScrollEnabled());
         editor.putBoolean(KEY_BLINK_DETECTION_ENABLED, settings.isBlinkDetectionEnabled());
         editor.putBoolean(KEY_AUTO_ONE_POINT_CALIBRATION, settings.isAutoOnePointCalibrationEnabled());
+        editor.putFloat(KEY_CURSOR_OFFSET_X, settings.getCursorOffsetX());
+        editor.putFloat(KEY_CURSOR_OFFSET_Y, settings.getCursorOffsetY());
         editor.apply();
     }
 
     @Override
     public void setDefaultSettings() {
         saveUserSettings(new UserSettings.Builder().build());
+    }
+
+    /**
+     * 통합 오프셋을 저장하는 메서드 (캘리브레이션에서 사용)
+     */
+    public void saveIntegratedCursorOffset(float offsetX, float offsetY) {
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putFloat(KEY_CURSOR_OFFSET_X, offsetX);
+        editor.putFloat(KEY_CURSOR_OFFSET_Y, offsetY);
+        editor.apply();
     }
 }
