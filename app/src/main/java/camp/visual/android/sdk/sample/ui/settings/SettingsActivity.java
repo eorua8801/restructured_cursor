@@ -13,6 +13,7 @@ import camp.visual.android.sdk.sample.R;
 import camp.visual.android.sdk.sample.data.settings.SettingsRepository;
 import camp.visual.android.sdk.sample.data.settings.SharedPrefsSettingsRepository;
 import camp.visual.android.sdk.sample.domain.model.UserSettings;
+import camp.visual.android.sdk.sample.service.tracking.GazeTrackingService;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -33,6 +34,7 @@ public class SettingsActivity extends AppCompatActivity {
     private Switch scrollEnabledSwitch;
     private Switch edgeScrollEnabledSwitch;
     private Switch blinkDetectionSwitch;
+    private Switch autoOnePointCalibrationSwitch;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +74,7 @@ public class SettingsActivity extends AppCompatActivity {
         scrollEnabledSwitch = findViewById(R.id.switch_scroll_enabled);
         edgeScrollEnabledSwitch = findViewById(R.id.switch_edge_scroll_enabled);
         blinkDetectionSwitch = findViewById(R.id.switch_blink_detection);
+        autoOnePointCalibrationSwitch = findViewById(R.id.switch_auto_one_point_calibration);
 
         // SeekBar 범위 설정
         fixationDurationBar.setMax(30); // 300ms ~ 3000ms
@@ -99,6 +102,7 @@ public class SettingsActivity extends AppCompatActivity {
         scrollEnabledSwitch.setChecked(currentSettings.isScrollEnabled());
         edgeScrollEnabledSwitch.setChecked(currentSettings.isEdgeScrollEnabled());
         blinkDetectionSwitch.setChecked(currentSettings.isBlinkDetectionEnabled());
+        autoOnePointCalibrationSwitch.setChecked(currentSettings.isAutoOnePointCalibrationEnabled());
 
         // 스크롤 관련 설정의 활성화 상태 업데이트
         updateScrollSettingsState();
@@ -177,6 +181,16 @@ public class SettingsActivity extends AppCompatActivity {
         edgeScrollEnabledSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> saveSettings());
 
         blinkDetectionSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> saveSettings());
+
+        // 자동 1포인트 캘리브레이션 스위치 리스너 추가
+        autoOnePointCalibrationSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            saveSettings();
+
+            // 서비스에 설정 변경 알림
+            if (GazeTrackingService.getInstance() != null) {
+                GazeTrackingService.getInstance().refreshSettings();
+            }
+        });
     }
 
     private void updateFixationDurationText() {
@@ -216,7 +230,8 @@ public class SettingsActivity extends AppCompatActivity {
                 .continuousScrollCount(scrollCountBar.getProgress() + 1)
                 .clickEnabled(clickEnabledSwitch.isChecked())
                 .edgeScrollEnabled(edgeScrollEnabledSwitch.isChecked())
-                .blinkDetectionEnabled(blinkDetectionSwitch.isChecked());
+                .blinkDetectionEnabled(blinkDetectionSwitch.isChecked())
+                .autoOnePointCalibrationEnabled(autoOnePointCalibrationSwitch.isChecked());
 
         UserSettings newSettings = builder.build();
         settingsRepository.saveUserSettings(newSettings);

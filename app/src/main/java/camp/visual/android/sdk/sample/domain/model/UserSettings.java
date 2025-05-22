@@ -16,6 +16,9 @@ public class UserSettings {
     private final boolean edgeScrollEnabled;
     private final boolean blinkDetectionEnabled;
 
+    // 캘리브레이션 설정
+    private final boolean autoOnePointCalibrationEnabled;
+
     private UserSettings(Builder builder) {
         this.fixationDurationMs = builder.fixationDurationMs;
         this.aoiRadius = builder.aoiRadius;
@@ -26,6 +29,7 @@ public class UserSettings {
         this.clickEnabled = builder.clickEnabled;
         this.edgeScrollEnabled = builder.edgeScrollEnabled;
         this.blinkDetectionEnabled = builder.blinkDetectionEnabled;
+        this.autoOnePointCalibrationEnabled = builder.autoOnePointCalibrationEnabled;
     }
 
     // Getters
@@ -65,6 +69,10 @@ public class UserSettings {
         return blinkDetectionEnabled;
     }
 
+    public boolean isAutoOnePointCalibrationEnabled() {
+        return autoOnePointCalibrationEnabled;
+    }
+
     // Builder 패턴 구현
     public static class Builder {
         // 기본값 설정
@@ -77,6 +85,7 @@ public class UserSettings {
         private boolean clickEnabled = true;
         private boolean edgeScrollEnabled = true;
         private boolean blinkDetectionEnabled = false;
+        private boolean autoOnePointCalibrationEnabled = true; // 기본값 true
 
         public Builder() {}
 
@@ -122,6 +131,11 @@ public class UserSettings {
 
         public Builder blinkDetectionEnabled(boolean val) {
             blinkDetectionEnabled = val;
+            return this;
+        }
+
+        public Builder autoOnePointCalibrationEnabled(boolean val) {
+            autoOnePointCalibrationEnabled = val;
             return this;
         }
 

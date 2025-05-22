@@ -18,6 +18,7 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
     private static final String KEY_CLICK_ENABLED = "click_enabled";
     private static final String KEY_EDGE_SCROLL_ENABLED = "edge_scroll_enabled";
     private static final String KEY_BLINK_DETECTION_ENABLED = "blink_detection_enabled";
+    private static final String KEY_AUTO_ONE_POINT_CALIBRATION = "auto_one_point_calibration";
 
     private final SharedPreferences prefs;
 
@@ -37,6 +38,7 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
                 .clickEnabled(prefs.getBoolean(KEY_CLICK_ENABLED, true))
                 .edgeScrollEnabled(prefs.getBoolean(KEY_EDGE_SCROLL_ENABLED, true))
                 .blinkDetectionEnabled(prefs.getBoolean(KEY_BLINK_DETECTION_ENABLED, false))
+                .autoOnePointCalibrationEnabled(prefs.getBoolean(KEY_AUTO_ONE_POINT_CALIBRATION, true))
                 .build();
     }
 
@@ -52,6 +54,7 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
         editor.putBoolean(KEY_CLICK_ENABLED, settings.isClickEnabled());
         editor.putBoolean(KEY_EDGE_SCROLL_ENABLED, settings.isEdgeScrollEnabled());
         editor.putBoolean(KEY_BLINK_DETECTION_ENABLED, settings.isBlinkDetectionEnabled());
+        editor.putBoolean(KEY_AUTO_ONE_POINT_CALIBRATION, settings.isAutoOnePointCalibrationEnabled());
         editor.apply();
     }
 
