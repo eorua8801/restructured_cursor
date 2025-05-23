@@ -16,6 +16,13 @@ public class UserSettings {
     private final boolean edgeScrollEnabled;
     private final boolean blinkDetectionEnabled;
 
+    // 캘리브레이션 설정
+    private final boolean autoOnePointCalibrationEnabled;
+
+    // 커서 위치 오프셋 설정 (통합 오프셋)
+    private final float cursorOffsetX;
+    private final float cursorOffsetY;
+
     private UserSettings(Builder builder) {
         this.fixationDurationMs = builder.fixationDurationMs;
         this.aoiRadius = builder.aoiRadius;
@@ -26,6 +33,9 @@ public class UserSettings {
         this.clickEnabled = builder.clickEnabled;
         this.edgeScrollEnabled = builder.edgeScrollEnabled;
         this.blinkDetectionEnabled = builder.blinkDetectionEnabled;
+        this.autoOnePointCalibrationEnabled = builder.autoOnePointCalibrationEnabled;
+        this.cursorOffsetX = builder.cursorOffsetX;
+        this.cursorOffsetY = builder.cursorOffsetY;
     }
 
     // Getters
@@ -65,6 +75,18 @@ public class UserSettings {
         return blinkDetectionEnabled;
     }
 
+    public boolean isAutoOnePointCalibrationEnabled() {
+        return autoOnePointCalibrationEnabled;
+    }
+
+    public float getCursorOffsetX() {
+        return cursorOffsetX;
+    }
+
+    public float getCursorOffsetY() {
+        return cursorOffsetY;
+    }
+
     // Builder 패턴 구현
     public static class Builder {
         // 기본값 설정
@@ -77,6 +99,9 @@ public class UserSettings {
         private boolean clickEnabled = true;
         private boolean edgeScrollEnabled = true;
         private boolean blinkDetectionEnabled = false;
+        private boolean autoOnePointCalibrationEnabled = true; // 기본값 true
+        private float cursorOffsetX = 0f; // 기본값 0 (오프셋 없음)
+        private float cursorOffsetY = 0f; // 기본값 0 (오프셋 없음)
 
         public Builder() {}
 
@@ -122,6 +147,21 @@ public class UserSettings {
 
         public Builder blinkDetectionEnabled(boolean val) {
             blinkDetectionEnabled = val;
+            return this;
+        }
+
+        public Builder autoOnePointCalibrationEnabled(boolean val) {
+            autoOnePointCalibrationEnabled = val;
+            return this;
+        }
+
+        public Builder cursorOffsetX(float val) {
+            cursorOffsetX = val;
+            return this;
+        }
+
+        public Builder cursorOffsetY(float val) {
+            cursorOffsetY = val;
             return this;
         }
 

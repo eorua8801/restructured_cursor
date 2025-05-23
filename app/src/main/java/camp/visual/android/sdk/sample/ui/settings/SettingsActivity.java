@@ -13,6 +13,7 @@ import camp.visual.android.sdk.sample.R;
 import camp.visual.android.sdk.sample.data.settings.SettingsRepository;
 import camp.visual.android.sdk.sample.data.settings.SharedPrefsSettingsRepository;
 import camp.visual.android.sdk.sample.domain.model.UserSettings;
+import camp.visual.android.sdk.sample.service.tracking.GazeTrackingService;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -29,10 +30,17 @@ public class SettingsActivity extends AppCompatActivity {
     private SeekBar scrollCountBar;
     private TextView scrollCountText;
 
+    // 커서 오프셋 UI 요소
+    private SeekBar cursorOffsetXBar;
+    private TextView cursorOffsetXText;
+    private SeekBar cursorOffsetYBar;
+    private TextView cursorOffsetYText;
+
     private Switch clickEnabledSwitch;
     private Switch scrollEnabledSwitch;
     private Switch edgeScrollEnabledSwitch;
     private Switch blinkDetectionSwitch;
+    private Switch autoOnePointCalibrationSwitch;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,17 +75,28 @@ public class SettingsActivity extends AppCompatActivity {
         scrollCountBar = findViewById(R.id.seekbar_scroll_count);
         scrollCountText = findViewById(R.id.text_scroll_count);
 
+        // 커서 오프셋 UI 초기화
+        cursorOffsetXBar = findViewById(R.id.seekbar_cursor_offset_x);
+        cursorOffsetXText = findViewById(R.id.text_cursor_offset_x);
+        cursorOffsetYBar = findViewById(R.id.seekbar_cursor_offset_y);
+        cursorOffsetYText = findViewById(R.id.text_cursor_offset_y);
+
         // Switch 초기화
         clickEnabledSwitch = findViewById(R.id.switch_click_enabled);
         scrollEnabledSwitch = findViewById(R.id.switch_scroll_enabled);
         edgeScrollEnabledSwitch = findViewById(R.id.switch_edge_scroll_enabled);
         blinkDetectionSwitch = findViewById(R.id.switch_blink_detection);
+        autoOnePointCalibrationSwitch = findViewById(R.id.switch_auto_one_point_calibration);
 
         // SeekBar 범위 설정
         fixationDurationBar.setMax(30); // 300ms ~ 3000ms
         aoiRadiusBar.setMax(60); // 10 ~ 70
         edgeTriggerTimeBar.setMax(40); // 1000ms ~ 5000ms
         scrollCountBar.setMax(4); // 1 ~ 5
+
+        // 커서 오프셋 범위 설정: -50px ~ +50px (0~100으로 매핑)
+        cursorOffsetXBar.setMax(100);
+        cursorOffsetYBar.setMax(100);
     }
 
     private void loadSettings() {
@@ -94,11 +113,17 @@ public class SettingsActivity extends AppCompatActivity {
         scrollCountBar.setProgress(currentSettings.getContinuousScrollCount() - 1);
         updateScrollCountText();
 
+        // 커서 오프셋 설정 (-50~+50을 0~100으로 변환)
+        cursorOffsetXBar.setProgress((int)(currentSettings.getCursorOffsetX() + 50));
+        cursorOffsetYBar.setProgress((int)(currentSettings.getCursorOffsetY() + 50));
+        updateCursorOffsetTexts();
+
         // Switch 설정
         clickEnabledSwitch.setChecked(currentSettings.isClickEnabled());
         scrollEnabledSwitch.setChecked(currentSettings.isScrollEnabled());
         edgeScrollEnabledSwitch.setChecked(currentSettings.isEdgeScrollEnabled());
         blinkDetectionSwitch.setChecked(currentSettings.isBlinkDetectionEnabled());
+        autoOnePointCalibrationSwitch.setChecked(currentSettings.isAutoOnePointCalibrationEnabled());
 
         // 스크롤 관련 설정의 활성화 상태 업데이트
         updateScrollSettingsState();
@@ -166,6 +191,37 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
+        // 커서 오프셋 SeekBar 리스너
+        cursorOffsetXBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                updateCursorOffsetTexts();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                saveSettings();
+            }
+        });
+
+        cursorOffsetYBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                updateCursorOffsetTexts();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                saveSettings();
+            }
+        });
+
         // Switch 리스너
         clickEnabledSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> saveSettings());
 
@@ -177,6 +233,16 @@ public class SettingsActivity extends AppCompatActivity {
         edgeScrollEnabledSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> saveSettings());
 
         blinkDetectionSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> saveSettings());
+
+        // 자동 1포인트 캘리브레이션 스위치 리스너 추가
+        autoOnePointCalibrationSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            saveSettings();
+
+            // 서비스에 설정 변경 알림
+            if (GazeTrackingService.getInstance() != null) {
+                GazeTrackingService.getInstance().refreshSettings();
+            }
+        });
     }
 
     private void updateFixationDurationText() {
@@ -199,6 +265,15 @@ public class SettingsActivity extends AppCompatActivity {
         scrollCountText.setText(String.format("%d회", value));
     }
 
+    private void updateCursorOffsetTexts() {
+        // 0~100을 -50~+50으로 변환
+        float offsetX = cursorOffsetXBar.getProgress() - 50;
+        float offsetY = cursorOffsetYBar.getProgress() - 50;
+
+        cursorOffsetXText.setText(String.format("%.0f px", offsetX));
+        cursorOffsetYText.setText(String.format("%.0f px", offsetY));
+    }
+
     private void updateScrollSettingsState() {
         boolean scrollEnabled = scrollEnabledSwitch.isChecked();
         edgeScrollEnabledSwitch.setEnabled(scrollEnabled);
@@ -216,11 +291,19 @@ public class SettingsActivity extends AppCompatActivity {
                 .continuousScrollCount(scrollCountBar.getProgress() + 1)
                 .clickEnabled(clickEnabledSwitch.isChecked())
                 .edgeScrollEnabled(edgeScrollEnabledSwitch.isChecked())
-                .blinkDetectionEnabled(blinkDetectionSwitch.isChecked());
+                .blinkDetectionEnabled(blinkDetectionSwitch.isChecked())
+                .autoOnePointCalibrationEnabled(autoOnePointCalibrationSwitch.isChecked())
+                .cursorOffsetX(cursorOffsetXBar.getProgress() - 50) // 0~100을 -50~+50으로 변환
+                .cursorOffsetY(cursorOffsetYBar.getProgress() - 50); // 0~100을 -50~+50으로 변환
 
         UserSettings newSettings = builder.build();
         settingsRepository.saveUserSettings(newSettings);
         currentSettings = newSettings;
+
+        // 서비스에 설정 변경 알림 (커서 오프셋 실시간 반영)
+        if (GazeTrackingService.getInstance() != null) {
+            GazeTrackingService.getInstance().refreshSettings();
+        }
     }
 
     @Override
