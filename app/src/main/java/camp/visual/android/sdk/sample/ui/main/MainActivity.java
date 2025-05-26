@@ -400,10 +400,10 @@ public class MainActivity extends AppCompatActivity {
         viewCalibration = findViewById(R.id.view_calibration);
         viewPoint = findViewById(R.id.view_point);
 
-        // 캘리브레이션 버튼만 활성화
+        // 캘리브레이션 버튼만 활성화 (텍스트 변경)
         btnStartCalibration = findViewById(R.id.btn_start_calibration);
         btnStartCalibration.setOnClickListener(onClickListener);
-        btnStartCalibration.setText("캘리브레이션 시작");
+        btnStartCalibration.setText("정밀 캘리브레이션"); // 버튼 텍스트 변경
 
         // 설정 버튼
         btnSettings = findViewById(R.id.btn_settings);
