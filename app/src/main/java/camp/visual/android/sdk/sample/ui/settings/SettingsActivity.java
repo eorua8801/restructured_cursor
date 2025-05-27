@@ -2,6 +2,10 @@ package camp.visual.android.sdk.sample.ui.settings;
 
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -12,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import camp.visual.android.sdk.sample.R;
 import camp.visual.android.sdk.sample.data.settings.SettingsRepository;
 import camp.visual.android.sdk.sample.data.settings.SharedPrefsSettingsRepository;
+import camp.visual.android.sdk.sample.domain.model.OneEuroFilterPreset;
 import camp.visual.android.sdk.sample.domain.model.UserSettings;
 import camp.visual.android.sdk.sample.service.tracking.GazeTrackingService;
 
@@ -35,6 +40,25 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView cursorOffsetXText;
     private SeekBar cursorOffsetYBar;
     private TextView cursorOffsetYText;
+
+    // OneEuroFilter 프리셋 UI 요소
+    private RadioGroup filterPresetRadioGroup;
+    private RadioButton radioStability;
+    private RadioButton radioBalanced;
+    private RadioButton radioResponsive;
+    private RadioButton radioHighResponsive;
+    private RadioButton radioCustom;
+    private LinearLayout customFilterLayout;
+
+    // OneEuroFilter 커스텀 UI 요소
+    private SeekBar oneEuroFreqBar;
+    private TextView oneEuroFreqText;
+    private SeekBar oneEuroMinCutoffBar;
+    private TextView oneEuroMinCutoffText;
+    private SeekBar oneEuroBetaBar;
+    private TextView oneEuroBetaText;
+    private SeekBar oneEuroDCutoffBar;
+    private TextView oneEuroDCutoffText;
 
     private Switch clickEnabledSwitch;
     private Switch scrollEnabledSwitch;
@@ -65,7 +89,7 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        // SeekBar와 TextView 초기화
+        // 기존 SeekBar와 TextView 초기화
         fixationDurationBar = findViewById(R.id.seekbar_fixation_duration);
         fixationDurationText = findViewById(R.id.text_fixation_duration);
         aoiRadiusBar = findViewById(R.id.seekbar_aoi_radius);
@@ -80,6 +104,25 @@ public class SettingsActivity extends AppCompatActivity {
         cursorOffsetXText = findViewById(R.id.text_cursor_offset_x);
         cursorOffsetYBar = findViewById(R.id.seekbar_cursor_offset_y);
         cursorOffsetYText = findViewById(R.id.text_cursor_offset_y);
+
+        // OneEuroFilter 프리셋 UI 초기화
+        filterPresetRadioGroup = findViewById(R.id.radio_group_filter_preset);
+        radioStability = findViewById(R.id.radio_stability);
+        radioBalanced = findViewById(R.id.radio_balanced);
+        radioResponsive = findViewById(R.id.radio_responsive);
+        radioHighResponsive = findViewById(R.id.radio_high_responsive);
+        radioCustom = findViewById(R.id.radio_custom);
+        customFilterLayout = findViewById(R.id.layout_custom_filter);
+
+        // OneEuroFilter 커스텀 UI 초기화
+        oneEuroFreqBar = findViewById(R.id.seekbar_one_euro_freq);
+        oneEuroFreqText = findViewById(R.id.text_one_euro_freq);
+        oneEuroMinCutoffBar = findViewById(R.id.seekbar_one_euro_min_cutoff);
+        oneEuroMinCutoffText = findViewById(R.id.text_one_euro_min_cutoff);
+        oneEuroBetaBar = findViewById(R.id.seekbar_one_euro_beta);
+        oneEuroBetaText = findViewById(R.id.text_one_euro_beta);
+        oneEuroDCutoffBar = findViewById(R.id.seekbar_one_euro_d_cutoff);
+        oneEuroDCutoffText = findViewById(R.id.text_one_euro_d_cutoff);
 
         // Switch 초기화
         clickEnabledSwitch = findViewById(R.id.switch_click_enabled);
@@ -97,10 +140,16 @@ public class SettingsActivity extends AppCompatActivity {
         // 커서 오프셋 범위 설정: -50px ~ +50px (0~100으로 매핑)
         cursorOffsetXBar.setMax(100);
         cursorOffsetYBar.setMax(100);
+
+        // OneEuroFilter 범위 설정
+        oneEuroFreqBar.setMax(90); // 10 ~ 100 Hz
+        oneEuroMinCutoffBar.setMax(50); // 0.0 ~ 5.0
+        oneEuroBetaBar.setMax(20); // 0.0 ~ 2.0
+        oneEuroDCutoffBar.setMax(50); // 0.0 ~ 5.0
     }
 
     private void loadSettings() {
-        // SeekBar 설정
+        // 기존 SeekBar 설정
         fixationDurationBar.setProgress((int)((currentSettings.getFixationDurationMs() - 300) / 100));
         updateFixationDurationText();
 
@@ -118,6 +167,36 @@ public class SettingsActivity extends AppCompatActivity {
         cursorOffsetYBar.setProgress((int)(currentSettings.getCursorOffsetY() + 50));
         updateCursorOffsetTexts();
 
+        // OneEuroFilter 프리셋 설정
+        OneEuroFilterPreset preset = currentSettings.getOneEuroFilterPreset();
+        switch (preset) {
+            case STABILITY:
+                radioStability.setChecked(true);
+                break;
+            case BALANCED:
+                radioBalanced.setChecked(true);
+                break;
+            case RESPONSIVE:
+                radioResponsive.setChecked(true);
+                break;
+            case HIGH_RESPONSIVE:
+                radioHighResponsive.setChecked(true);
+                break;
+            case CUSTOM:
+                radioCustom.setChecked(true);
+                break;
+        }
+
+        // OneEuroFilter 커스텀 설정 (항상 로드하되, 커스텀 모드일 때만 표시)
+        oneEuroFreqBar.setProgress((int)(currentSettings.getOneEuroFreq() - 10));
+        oneEuroMinCutoffBar.setProgress((int)(currentSettings.getOneEuroMinCutoff() * 10));
+        oneEuroBetaBar.setProgress((int)(currentSettings.getOneEuroBeta() * 10));
+        oneEuroDCutoffBar.setProgress((int)(currentSettings.getOneEuroDCutoff() * 10));
+        updateOneEuroTexts();
+
+        // 커스텀 레이아웃 표시/숨김
+        updateCustomFilterVisibility();
+
         // Switch 설정
         clickEnabledSwitch.setChecked(currentSettings.isClickEnabled());
         scrollEnabledSwitch.setChecked(currentSettings.isScrollEnabled());
@@ -130,7 +209,13 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        // SeekBar 리스너
+        // 프리셋 라디오 그룹 리스너
+        filterPresetRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            updateCustomFilterVisibility();
+            saveSettings();
+        });
+
+        // 기존 SeekBar 리스너들...
         fixationDurationBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -222,6 +307,67 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
+        // OneEuroFilter 커스텀 SeekBar 리스너
+        oneEuroFreqBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                updateOneEuroTexts();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                saveSettings();
+            }
+        });
+
+        oneEuroMinCutoffBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                updateOneEuroTexts();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                saveSettings();
+            }
+        });
+
+        oneEuroBetaBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                updateOneEuroTexts();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                saveSettings();
+            }
+        });
+
+        oneEuroDCutoffBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                updateOneEuroTexts();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                saveSettings();
+            }
+        });
+
         // Switch 리스너
         clickEnabledSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> saveSettings());
 
@@ -234,7 +380,6 @@ public class SettingsActivity extends AppCompatActivity {
 
         blinkDetectionSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> saveSettings());
 
-        // 자동 1포인트 캘리브레이션 스위치 리스너 추가
         autoOnePointCalibrationSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             saveSettings();
 
@@ -243,6 +388,21 @@ public class SettingsActivity extends AppCompatActivity {
                 GazeTrackingService.getInstance().refreshSettings();
             }
         });
+    }
+
+    private void updateCustomFilterVisibility() {
+        boolean isCustom = radioCustom.isChecked();
+        customFilterLayout.setVisibility(isCustom ? View.VISIBLE : View.GONE);
+    }
+
+    private OneEuroFilterPreset getSelectedPreset() {
+        int checkedId = filterPresetRadioGroup.getCheckedRadioButtonId();
+        if (checkedId == R.id.radio_stability) return OneEuroFilterPreset.STABILITY;
+        if (checkedId == R.id.radio_balanced) return OneEuroFilterPreset.BALANCED;
+        if (checkedId == R.id.radio_responsive) return OneEuroFilterPreset.RESPONSIVE;
+        if (checkedId == R.id.radio_high_responsive) return OneEuroFilterPreset.HIGH_RESPONSIVE;
+        if (checkedId == R.id.radio_custom) return OneEuroFilterPreset.CUSTOM;
+        return OneEuroFilterPreset.BALANCED; // 기본값
     }
 
     private void updateFixationDurationText() {
@@ -274,6 +434,18 @@ public class SettingsActivity extends AppCompatActivity {
         cursorOffsetYText.setText(String.format("%.0f px", offsetY));
     }
 
+    private void updateOneEuroTexts() {
+        double freq = 10 + oneEuroFreqBar.getProgress();
+        double minCutoff = oneEuroMinCutoffBar.getProgress() / 10.0;
+        double beta = oneEuroBetaBar.getProgress() / 10.0;
+        double dCutoff = oneEuroDCutoffBar.getProgress() / 10.0;
+
+        oneEuroFreqText.setText(String.format("%.0f Hz", freq));
+        oneEuroMinCutoffText.setText(String.format("%.1f", minCutoff));
+        oneEuroBetaText.setText(String.format("%.1f", beta));
+        oneEuroDCutoffText.setText(String.format("%.1f", dCutoff));
+    }
+
     private void updateScrollSettingsState() {
         boolean scrollEnabled = scrollEnabledSwitch.isChecked();
         edgeScrollEnabledSwitch.setEnabled(scrollEnabled);
@@ -294,13 +466,18 @@ public class SettingsActivity extends AppCompatActivity {
                 .blinkDetectionEnabled(blinkDetectionSwitch.isChecked())
                 .autoOnePointCalibrationEnabled(autoOnePointCalibrationSwitch.isChecked())
                 .cursorOffsetX(cursorOffsetXBar.getProgress() - 50) // 0~100을 -50~+50으로 변환
-                .cursorOffsetY(cursorOffsetYBar.getProgress() - 50); // 0~100을 -50~+50으로 변환
+                .cursorOffsetY(cursorOffsetYBar.getProgress() - 50) // 0~100을 -50~+50으로 변환
+                .oneEuroFilterPreset(getSelectedPreset())
+                .oneEuroFreq(10 + oneEuroFreqBar.getProgress())
+                .oneEuroMinCutoff(oneEuroMinCutoffBar.getProgress() / 10.0)
+                .oneEuroBeta(oneEuroBetaBar.getProgress() / 10.0)
+                .oneEuroDCutoff(oneEuroDCutoffBar.getProgress() / 10.0);
 
         UserSettings newSettings = builder.build();
         settingsRepository.saveUserSettings(newSettings);
         currentSettings = newSettings;
 
-        // 서비스에 설정 변경 알림 (커서 오프셋 실시간 반영)
+        // 서비스에 설정 변경 알림 (OneEuroFilter 설정도 실시간 반영)
         if (GazeTrackingService.getInstance() != null) {
             GazeTrackingService.getInstance().refreshSettings();
         }

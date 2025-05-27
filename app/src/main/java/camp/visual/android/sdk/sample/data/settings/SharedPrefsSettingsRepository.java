@@ -3,6 +3,7 @@ package camp.visual.android.sdk.sample.data.settings;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import camp.visual.android.sdk.sample.domain.model.OneEuroFilterPreset;
 import camp.visual.android.sdk.sample.domain.model.UserSettings;
 
 public class SharedPrefsSettingsRepository implements SettingsRepository {
@@ -22,6 +23,13 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
     private static final String KEY_CURSOR_OFFSET_X = "cursor_offset_x";
     private static final String KEY_CURSOR_OFFSET_Y = "cursor_offset_y";
 
+    // OneEuroFilter 관련 키
+    private static final String KEY_ONE_EURO_PRESET = "one_euro_preset";
+    private static final String KEY_ONE_EURO_FREQ = "one_euro_freq";
+    private static final String KEY_ONE_EURO_MIN_CUTOFF = "one_euro_min_cutoff";
+    private static final String KEY_ONE_EURO_BETA = "one_euro_beta";
+    private static final String KEY_ONE_EURO_D_CUTOFF = "one_euro_d_cutoff";
+
     private final SharedPreferences prefs;
 
     public SharedPrefsSettingsRepository(Context context) {
@@ -30,6 +38,10 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
 
     @Override
     public UserSettings getUserSettings() {
+        // OneEuroFilter 프리셋 로드
+        String presetName = prefs.getString(KEY_ONE_EURO_PRESET, OneEuroFilterPreset.BALANCED.name());
+        OneEuroFilterPreset preset = OneEuroFilterPreset.fromName(presetName);
+
         return new UserSettings.Builder()
                 .fixationDurationMs(prefs.getFloat(KEY_FIXATION_DURATION, 1000f))
                 .aoiRadius(prefs.getFloat(KEY_AOI_RADIUS, 40f))
@@ -43,6 +55,11 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
                 .autoOnePointCalibrationEnabled(prefs.getBoolean(KEY_AUTO_ONE_POINT_CALIBRATION, true))
                 .cursorOffsetX(prefs.getFloat(KEY_CURSOR_OFFSET_X, 0f))
                 .cursorOffsetY(prefs.getFloat(KEY_CURSOR_OFFSET_Y, 0f))
+                .oneEuroFilterPreset(preset)
+                .oneEuroFreq(prefs.getFloat(KEY_ONE_EURO_FREQ, 30.0f))
+                .oneEuroMinCutoff(prefs.getFloat(KEY_ONE_EURO_MIN_CUTOFF, 1.0f))
+                .oneEuroBeta(prefs.getFloat(KEY_ONE_EURO_BETA, 0.0f))
+                .oneEuroDCutoff(prefs.getFloat(KEY_ONE_EURO_D_CUTOFF, 1.0f))
                 .build();
     }
 
@@ -61,6 +78,14 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
         editor.putBoolean(KEY_AUTO_ONE_POINT_CALIBRATION, settings.isAutoOnePointCalibrationEnabled());
         editor.putFloat(KEY_CURSOR_OFFSET_X, settings.getCursorOffsetX());
         editor.putFloat(KEY_CURSOR_OFFSET_Y, settings.getCursorOffsetY());
+
+        // OneEuroFilter 설정 저장
+        editor.putString(KEY_ONE_EURO_PRESET, settings.getOneEuroFilterPreset().name());
+        editor.putFloat(KEY_ONE_EURO_FREQ, (float) settings.getOneEuroFreq());
+        editor.putFloat(KEY_ONE_EURO_MIN_CUTOFF, (float) settings.getOneEuroMinCutoff());
+        editor.putFloat(KEY_ONE_EURO_BETA, (float) settings.getOneEuroBeta());
+        editor.putFloat(KEY_ONE_EURO_D_CUTOFF, (float) settings.getOneEuroDCutoff());
+
         editor.apply();
     }
 
