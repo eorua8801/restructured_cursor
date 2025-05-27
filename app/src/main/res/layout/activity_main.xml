@@ -17,14 +17,26 @@
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent">
 
-    <!-- 캘리브레이션 버튼만 남김 -->
+    <!-- 정렬 버튼 추가 -->
+    <Button
+        android:id="@+id/btn_alignment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="정렬"
+        android:textSize="16sp"
+        android:padding="12dp"
+        android:backgroundTint="#4CAF50"
+        android:textColor="@android:color/white" />
+
+    <!-- 정밀 캘리브레이션 버튼 -->
     <Button
         android:id="@+id/btn_start_calibration"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="캘리브레이션 시작"
+        android:text="정밀 보정"
         android:textSize="16sp"
-        android:padding="12dp" />
+        android:padding="12dp"
+        android:layout_marginTop="8dp" />
 
     <!-- 설정 버튼 -->
     <Button

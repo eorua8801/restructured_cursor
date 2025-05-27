@@ -144,6 +144,21 @@
                 android:layout_marginBottom="8dp"/>
 
             <RadioButton
+                android:id="@+id/radio_balanced_stability"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🔍 균형-안정성"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="   안정성을 조금 더 중시"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="8dp"/>
+
+            <RadioButton
                 android:id="@+id/radio_balanced"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -159,6 +174,21 @@
                 android:layout_marginBottom="8dp"/>
 
             <RadioButton
+                android:id="@+id/radio_balanced_responsive"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🔸 균형-반응성"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="   반응성을 조금 더 중시"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="8dp"/>
+
+            <RadioButton
                 android:id="@+id/radio_responsive"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -169,21 +199,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="   빠른 반응, 약간의 떨림 허용"
-                android:textSize="12sp"
-                android:textColor="#666666"
-                android:layout_marginBottom="8dp"/>
-
-            <RadioButton
-                android:id="@+id/radio_high_responsive"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="🚀 고반응성"
-                android:layout_marginBottom="4dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="   매우 빠른 반응, 떨림 더 많이 허용"
                 android:textSize="12sp"
                 android:textColor="#666666"
                 android:layout_marginBottom="8dp"/>
@@ -301,14 +316,14 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:max="20"
-                    android:progress="0"/>
+                    android:max="50"
+                    android:progress="7"/>
 
                 <TextView
                     android:id="@+id/text_one_euro_beta"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0.0"
+                    android:text="0.007"
                     android:layout_marginStart="8dp"
                     android:minWidth="70dp"/>
             </LinearLayout>

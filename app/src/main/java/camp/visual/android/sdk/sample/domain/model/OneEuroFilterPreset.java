@@ -2,10 +2,11 @@ package camp.visual.android.sdk.sample.domain.model;
 
 public enum OneEuroFilterPreset {
     STABILITY("안정성 우선", "매우 부드럽고 안정적, 떨림 최소화", 30.0, 0.5, 0.0, 1.0),
-    BALANCED("균형", "안정성과 반응성의 균형 (권장)", 30.0, 1.0, 0.0, 1.0),
-    RESPONSIVE("반응성 우선", "빠른 반응, 약간의 떨림 허용", 30.0, 1.5, 0.1, 1.0),
-    HIGH_RESPONSIVE("고반응성", "매우 빠른 반응, 떨림 더 많이 허용", 30.0, 2.0, 0.2, 1.0),
-    CUSTOM("커스텀", "사용자 직접 설정", 30.0, 1.0, 0.0, 1.0);
+    BALANCED_STABILITY("균형-안정성", "안정성을 조금 더 중시", 30.0, 0.75, 0.003, 1.0),
+    BALANCED("균형 (권장)", "안정성과 반응성의 균형", 30.0, 1.0, 0.007, 1.0),
+    BALANCED_RESPONSIVE("균형-반응성", "반응성을 조금 더 중시", 30.0, 1.25, 0.01, 1.0),
+    RESPONSIVE("반응성 우선", "빠른 반응, 약간의 떨림 허용", 30.0, 1.5, 0.015, 1.0),
+    CUSTOM("커스텀", "사용자 직접 설정", 30.0, 1.0, 0.007, 1.0);
 
     private final String displayName;
     private final String description;
