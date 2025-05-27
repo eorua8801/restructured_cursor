@@ -23,6 +23,13 @@ public class UserSettings {
     private final float cursorOffsetX;
     private final float cursorOffsetY;
 
+    // OneEuroFilter 설정 - 프리셋 방식
+    private final OneEuroFilterPreset oneEuroFilterPreset;
+    private final double oneEuroFreq;
+    private final double oneEuroMinCutoff;
+    private final double oneEuroBeta;
+    private final double oneEuroDCutoff;
+
     private UserSettings(Builder builder) {
         this.fixationDurationMs = builder.fixationDurationMs;
         this.aoiRadius = builder.aoiRadius;
@@ -36,6 +43,20 @@ public class UserSettings {
         this.autoOnePointCalibrationEnabled = builder.autoOnePointCalibrationEnabled;
         this.cursorOffsetX = builder.cursorOffsetX;
         this.cursorOffsetY = builder.cursorOffsetY;
+        this.oneEuroFilterPreset = builder.oneEuroFilterPreset;
+
+        // 프리셋이 커스텀인 경우 사용자 설정값 사용, 아니면 프리셋값 사용
+        if (this.oneEuroFilterPreset == OneEuroFilterPreset.CUSTOM) {
+            this.oneEuroFreq = builder.oneEuroFreq;
+            this.oneEuroMinCutoff = builder.oneEuroMinCutoff;
+            this.oneEuroBeta = builder.oneEuroBeta;
+            this.oneEuroDCutoff = builder.oneEuroDCutoff;
+        } else {
+            this.oneEuroFreq = this.oneEuroFilterPreset.getFreq();
+            this.oneEuroMinCutoff = this.oneEuroFilterPreset.getMinCutoff();
+            this.oneEuroBeta = this.oneEuroFilterPreset.getBeta();
+            this.oneEuroDCutoff = this.oneEuroFilterPreset.getDCutoff();
+        }
     }
 
     // Getters
@@ -87,6 +108,26 @@ public class UserSettings {
         return cursorOffsetY;
     }
 
+    public OneEuroFilterPreset getOneEuroFilterPreset() {
+        return oneEuroFilterPreset;
+    }
+
+    public double getOneEuroFreq() {
+        return oneEuroFreq;
+    }
+
+    public double getOneEuroMinCutoff() {
+        return oneEuroMinCutoff;
+    }
+
+    public double getOneEuroBeta() {
+        return oneEuroBeta;
+    }
+
+    public double getOneEuroDCutoff() {
+        return oneEuroDCutoff;
+    }
+
     // Builder 패턴 구현
     public static class Builder {
         // 기본값 설정
@@ -99,9 +140,16 @@ public class UserSettings {
         private boolean clickEnabled = true;
         private boolean edgeScrollEnabled = true;
         private boolean blinkDetectionEnabled = false;
-        private boolean autoOnePointCalibrationEnabled = true; // 기본값 true
-        private float cursorOffsetX = 0f; // 기본값 0 (오프셋 없음)
-        private float cursorOffsetY = 0f; // 기본값 0 (오프셋 없음)
+        private boolean autoOnePointCalibrationEnabled = true;
+        private float cursorOffsetX = 0f;
+        private float cursorOffsetY = 0f;
+
+        // OneEuroFilter 기본값 - 균형 프리셋
+        private OneEuroFilterPreset oneEuroFilterPreset = OneEuroFilterPreset.BALANCED;
+        private double oneEuroFreq = 30.0;
+        private double oneEuroMinCutoff = 1.0;
+        private double oneEuroBeta = 0.0;
+        private double oneEuroDCutoff = 1.0;
 
         public Builder() {}
 
@@ -162,6 +210,31 @@ public class UserSettings {
 
         public Builder cursorOffsetY(float val) {
             cursorOffsetY = val;
+            return this;
+        }
+
+        public Builder oneEuroFilterPreset(OneEuroFilterPreset val) {
+            oneEuroFilterPreset = val;
+            return this;
+        }
+
+        public Builder oneEuroFreq(double val) {
+            oneEuroFreq = val;
+            return this;
+        }
+
+        public Builder oneEuroMinCutoff(double val) {
+            oneEuroMinCutoff = val;
+            return this;
+        }
+
+        public Builder oneEuroBeta(double val) {
+            oneEuroBeta = val;
+            return this;
+        }
+
+        public Builder oneEuroDCutoff(double val) {
+            oneEuroDCutoff = val;
             return this;
         }
 

@@ -122,13 +122,27 @@ public class GazeTrackingService extends Service {
     private void initDetectors() {
         clickDetector = new ClickDetector(userSettings);
         edgeScrollDetector = new EdgeScrollDetector(userSettings, this);
-        oneEuroFilterManager = new OneEuroFilterManager(2);
+
+        // OneEuroFilterManager를 프리셋 또는 사용자 설정값으로 초기화 (float 캐스팅)
+        oneEuroFilterManager = new OneEuroFilterManager(
+                2,  // count (x, y 좌표)
+                (float) userSettings.getOneEuroFreq(),
+                (float) userSettings.getOneEuroMinCutoff(),
+                (float) userSettings.getOneEuroBeta(),
+                (float) userSettings.getOneEuroDCutoff()
+        );
 
         // 기존에 저장된 커서 오프셋이 있으면 바로 적용
         if (userSettings.getCursorOffsetX() != 0f || userSettings.getCursorOffsetY() != 0f) {
             offsetApplied = true;
             Log.d(TAG, "기존 커서 오프셋 적용: X=" + userSettings.getCursorOffsetX() + ", Y=" + userSettings.getCursorOffsetY());
         }
+
+        Log.d(TAG, "OneEuroFilter 초기화 - 프리셋: " + userSettings.getOneEuroFilterPreset().getDisplayName());
+        Log.d(TAG, "OneEuroFilter 파라미터 - freq: " + userSettings.getOneEuroFreq() +
+                ", minCutoff: " + userSettings.getOneEuroMinCutoff() +
+                ", beta: " + userSettings.getOneEuroBeta() +
+                ", dCutoff: " + userSettings.getOneEuroDCutoff());
     }
 
     private void initSystemServices() {
@@ -643,8 +657,23 @@ public class GazeTrackingService extends Service {
         userSettings = settingsRepository.getUserSettings();
         clickDetector = new ClickDetector(userSettings);
         edgeScrollDetector = new EdgeScrollDetector(userSettings, this);
+
+        // OneEuroFilterManager도 새 설정으로 재초기화 (float 캐스팅)
+        oneEuroFilterManager = new OneEuroFilterManager(
+                2,
+                (float) userSettings.getOneEuroFreq(),
+                (float) userSettings.getOneEuroMinCutoff(),
+                (float) userSettings.getOneEuroBeta(),
+                (float) userSettings.getOneEuroDCutoff()
+        );
+
         Log.d(TAG, "사용자 설정이 새로고침되었습니다");
         Log.d(TAG, "현재 커서 오프셋: X=" + userSettings.getCursorOffsetX() + ", Y=" + userSettings.getCursorOffsetY());
+        Log.d(TAG, "현재 OneEuroFilter 프리셋: " + userSettings.getOneEuroFilterPreset().getDisplayName());
+        Log.d(TAG, "현재 OneEuroFilter 파라미터 - freq: " + userSettings.getOneEuroFreq() +
+                ", minCutoff: " + userSettings.getOneEuroMinCutoff() +
+                ", beta: " + userSettings.getOneEuroBeta() +
+                ", dCutoff: " + userSettings.getOneEuroDCutoff());
     }
 
     // 추가된 메소드: 접근성 서비스 활성화 여부 확인
