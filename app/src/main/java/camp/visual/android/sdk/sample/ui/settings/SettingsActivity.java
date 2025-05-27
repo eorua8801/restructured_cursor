@@ -1,6 +1,7 @@
 package camp.visual.android.sdk.sample.ui.settings;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -44,9 +45,10 @@ public class SettingsActivity extends AppCompatActivity {
     // OneEuroFilter 프리셋 UI 요소
     private RadioGroup filterPresetRadioGroup;
     private RadioButton radioStability;
+    private RadioButton radioBalancedStability;
     private RadioButton radioBalanced;
+    private RadioButton radioBalancedResponsive;
     private RadioButton radioResponsive;
-    private RadioButton radioHighResponsive;
     private RadioButton radioCustom;
     private LinearLayout customFilterLayout;
 
@@ -108,9 +110,10 @@ public class SettingsActivity extends AppCompatActivity {
         // OneEuroFilter 프리셋 UI 초기화
         filterPresetRadioGroup = findViewById(R.id.radio_group_filter_preset);
         radioStability = findViewById(R.id.radio_stability);
+        radioBalancedStability = findViewById(R.id.radio_balanced_stability);
         radioBalanced = findViewById(R.id.radio_balanced);
+        radioBalancedResponsive = findViewById(R.id.radio_balanced_responsive);
         radioResponsive = findViewById(R.id.radio_responsive);
-        radioHighResponsive = findViewById(R.id.radio_high_responsive);
         radioCustom = findViewById(R.id.radio_custom);
         customFilterLayout = findViewById(R.id.layout_custom_filter);
 
@@ -173,14 +176,17 @@ public class SettingsActivity extends AppCompatActivity {
             case STABILITY:
                 radioStability.setChecked(true);
                 break;
+            case BALANCED_STABILITY:
+                radioBalancedStability.setChecked(true);
+                break;
             case BALANCED:
                 radioBalanced.setChecked(true);
                 break;
+            case BALANCED_RESPONSIVE:
+                radioBalancedResponsive.setChecked(true);
+                break;
             case RESPONSIVE:
                 radioResponsive.setChecked(true);
-                break;
-            case HIGH_RESPONSIVE:
-                radioHighResponsive.setChecked(true);
                 break;
             case CUSTOM:
                 radioCustom.setChecked(true);
@@ -190,7 +196,7 @@ public class SettingsActivity extends AppCompatActivity {
         // OneEuroFilter 커스텀 설정 (항상 로드하되, 커스텀 모드일 때만 표시)
         oneEuroFreqBar.setProgress((int)(currentSettings.getOneEuroFreq() - 10));
         oneEuroMinCutoffBar.setProgress((int)(currentSettings.getOneEuroMinCutoff() * 10));
-        oneEuroBetaBar.setProgress((int)(currentSettings.getOneEuroBeta() * 10));
+        oneEuroBetaBar.setProgress((int)(currentSettings.getOneEuroBeta() * 1000)); // 0.007 같은 작은 값 처리
         oneEuroDCutoffBar.setProgress((int)(currentSettings.getOneEuroDCutoff() * 10));
         updateOneEuroTexts();
 
@@ -398,9 +404,10 @@ public class SettingsActivity extends AppCompatActivity {
     private OneEuroFilterPreset getSelectedPreset() {
         int checkedId = filterPresetRadioGroup.getCheckedRadioButtonId();
         if (checkedId == R.id.radio_stability) return OneEuroFilterPreset.STABILITY;
+        if (checkedId == R.id.radio_balanced_stability) return OneEuroFilterPreset.BALANCED_STABILITY;
         if (checkedId == R.id.radio_balanced) return OneEuroFilterPreset.BALANCED;
+        if (checkedId == R.id.radio_balanced_responsive) return OneEuroFilterPreset.BALANCED_RESPONSIVE;
         if (checkedId == R.id.radio_responsive) return OneEuroFilterPreset.RESPONSIVE;
-        if (checkedId == R.id.radio_high_responsive) return OneEuroFilterPreset.HIGH_RESPONSIVE;
         if (checkedId == R.id.radio_custom) return OneEuroFilterPreset.CUSTOM;
         return OneEuroFilterPreset.BALANCED; // 기본값
     }
@@ -437,12 +444,12 @@ public class SettingsActivity extends AppCompatActivity {
     private void updateOneEuroTexts() {
         double freq = 10 + oneEuroFreqBar.getProgress();
         double minCutoff = oneEuroMinCutoffBar.getProgress() / 10.0;
-        double beta = oneEuroBetaBar.getProgress() / 10.0;
+        double beta = oneEuroBetaBar.getProgress() / 1000.0; // 0.001 단위로 조정
         double dCutoff = oneEuroDCutoffBar.getProgress() / 10.0;
 
         oneEuroFreqText.setText(String.format("%.0f Hz", freq));
         oneEuroMinCutoffText.setText(String.format("%.1f", minCutoff));
-        oneEuroBetaText.setText(String.format("%.1f", beta));
+        oneEuroBetaText.setText(String.format("%.3f", beta)); // 소수점 3자리까지 표시
         oneEuroDCutoffText.setText(String.format("%.1f", dCutoff));
     }
 
@@ -470,7 +477,7 @@ public class SettingsActivity extends AppCompatActivity {
                 .oneEuroFilterPreset(getSelectedPreset())
                 .oneEuroFreq(10 + oneEuroFreqBar.getProgress())
                 .oneEuroMinCutoff(oneEuroMinCutoffBar.getProgress() / 10.0)
-                .oneEuroBeta(oneEuroBetaBar.getProgress() / 10.0)
+                .oneEuroBeta(oneEuroBetaBar.getProgress() / 1000.0) // 0.001 단위
                 .oneEuroDCutoff(oneEuroDCutoffBar.getProgress() / 10.0);
 
         UserSettings newSettings = builder.build();
@@ -481,6 +488,18 @@ public class SettingsActivity extends AppCompatActivity {
         if (GazeTrackingService.getInstance() != null) {
             GazeTrackingService.getInstance().refreshSettings();
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // 설정 화면이 다시 보일 때마다 최신 설정 로드
+        currentSettings = settingsRepository.getUserSettings();
+        loadSettings();
+
+        Log.d("SettingsActivity", "설정 새로고침 - 현재 커서 오프셋: X=" +
+                currentSettings.getCursorOffsetX() + ", Y=" + currentSettings.getCursorOffsetY());
     }
 
     @Override

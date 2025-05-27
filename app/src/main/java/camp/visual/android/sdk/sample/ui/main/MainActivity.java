@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private View layoutProgress;
     private PointView viewPoint;
     private boolean skipProgress = false;
-    private Button btnStartCalibration, btnSettings;
+    private Button btnAlignment, btnStartCalibration, btnSettings;
     private CalibrationViewer viewCalibration;
     private final ViewLayoutChecker viewLayoutChecker = new ViewLayoutChecker();
     private Handler backgroundHandler;
@@ -129,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
         public void onStarted() {
             // 추적이 시작되면 캘리브레이션 가능
             runOnUiThread(() -> {
+                btnAlignment.setEnabled(true);
                 btnStartCalibration.setEnabled(true);
             });
         }
@@ -136,6 +137,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onStopped(StatusErrorType error) {
             runOnUiThread(() -> {
+                btnAlignment.setEnabled(false);
                 btnStartCalibration.setEnabled(false);
             });
             if (error != StatusErrorType.ERROR_NONE) {
@@ -153,7 +155,22 @@ public class MainActivity extends AppCompatActivity {
         public void onClick(View v) {
             Log.d("MainActivity", "버튼 클릭됨: " + v.getId());
 
-            if (v == btnStartCalibration) {
+            if (v == btnAlignment) {
+                Log.d("MainActivity", "정렬 버튼 클릭됨");
+
+                // 서비스에서 1포인트 캘리브레이션 실행
+                if (isServiceRunning()) {
+                    GazeTrackingService service = GazeTrackingService.getInstance();
+                    if (service != null) {
+                        service.startOnePointCalibrationWithOffset();
+                        showToast("시선 정렬을 시작합니다", true);
+                    } else {
+                        showToast("서비스에 연결할 수 없습니다", false);
+                    }
+                } else {
+                    showToast("시선 추적 서비스가 실행되지 않았습니다", false);
+                }
+            } else if (v == btnStartCalibration) {
                 Log.d("MainActivity", "캘리브레이션 버튼 클릭됨");
 
                 if (gazeTracker != null || isServiceRunning()) {
@@ -179,6 +196,7 @@ public class MainActivity extends AppCompatActivity {
             if (isServiceRunning()) {
                 Log.d("MainActivity", "서비스가 실행 중이므로 MainActivity SDK 사용하지 않음");
                 gazeTracker.stopTracking();
+                btnAlignment.setEnabled(true);
                 btnStartCalibration.setEnabled(true);
             } else {
                 // 서비스가 없는 경우에만 MainActivity에서 SDK 사용
@@ -192,6 +210,7 @@ public class MainActivity extends AppCompatActivity {
 
                 // UI 업데이트
                 runOnUiThread(() -> {
+                    btnAlignment.setEnabled(true);
                     btnStartCalibration.setEnabled(true);
                 });
             }
@@ -231,8 +250,9 @@ public class MainActivity extends AppCompatActivity {
                 showAccessibilityPermissionDialog();
             }
 
-            // 오버레이 권한이 있으면 서비스 시작
+            // 오버레이 권한이 있으면 서비스 시작 (오프셋 리셋 포함)
             Intent serviceIntent = new Intent(this, GazeTrackingService.class);
+            serviceIntent.putExtra("reset_offset", true); // 오프셋 리셋 요청
             startForegroundService(serviceIntent);
         }
     }
@@ -338,8 +358,9 @@ public class MainActivity extends AppCompatActivity {
                     showAccessibilityPermissionDialog();
                 }
 
-                // 서비스 시작
+                // 서비스 시작 (오프셋 리셋 포함)
                 Intent serviceIntent = new Intent(this, GazeTrackingService.class);
+                serviceIntent.putExtra("reset_offset", true);
                 startForegroundService(serviceIntent);
             } else {
                 showToast("오버레이 권한이 필요합니다", false);
@@ -366,6 +387,15 @@ public class MainActivity extends AppCompatActivity {
         if (isServiceRunning()) {
             // 서비스가 실행 중이면 UI 활성화
             Log.d("MainActivity", "서비스 실행 중 - UI 활성화");
+
+            // 서비스가 이미 실행 중일 때도 오프셋 리셋 보장
+            GazeTrackingService service = GazeTrackingService.getInstance();
+            if (service != null) {
+                service.forceResetCursorOffset();
+                Log.d("MainActivity", "기존 서비스의 오프셋 강제 리셋 완료");
+            }
+
+            btnAlignment.setEnabled(true);
             btnStartCalibration.setEnabled(true);
             hideProgress();
 
@@ -376,15 +406,17 @@ public class MainActivity extends AppCompatActivity {
                 gazeTracker = null;
             }
         } else {
-            // 서비스가 없으면 새로 시작
+            // 서비스가 없으면 새로 시작 (오프셋 리셋 포함)
             Log.d("MainActivity", "서비스 시작");
             Intent serviceIntent = new Intent(this, GazeTrackingService.class);
+            serviceIntent.putExtra("reset_offset", true);
             startForegroundService(serviceIntent);
 
             // 서비스 시작 후 잠시 대기 후 상태 확인
             backgroundHandler.postDelayed(() -> {
                 runOnUiThread(() -> {
                     if (isServiceRunning()) {
+                        btnAlignment.setEnabled(true);
                         btnStartCalibration.setEnabled(true);
                         hideProgress();
                     }
@@ -400,10 +432,14 @@ public class MainActivity extends AppCompatActivity {
         viewCalibration = findViewById(R.id.view_calibration);
         viewPoint = findViewById(R.id.view_point);
 
+        // 정렬 버튼 추가
+        btnAlignment = findViewById(R.id.btn_alignment);
+        btnAlignment.setOnClickListener(onClickListener);
+
         // 캘리브레이션 버튼만 활성화 (텍스트 변경)
         btnStartCalibration = findViewById(R.id.btn_start_calibration);
         btnStartCalibration.setOnClickListener(onClickListener);
-        btnStartCalibration.setText("정밀 캘리브레이션"); // 버튼 텍스트 변경
+        btnStartCalibration.setText("정밀 보정"); // 버튼 텍스트 변경
 
         // 설정 버튼
         btnSettings = findViewById(R.id.btn_settings);
@@ -413,6 +449,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // 초기 상태 설정
+        btnAlignment.setEnabled(false);
         btnStartCalibration.setEnabled(false);
         viewPoint.setPosition(-999,-999);
 
@@ -470,6 +507,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d("MainActivity", "서비스가 이미 실행 중입니다. SDK 재초기화를 건너뜁니다.");
             // 서비스가 실행 중이면 바로 UI 활성화
             hideProgress();
+            btnAlignment.setEnabled(true);
             btnStartCalibration.setEnabled(true);
             showToast("시선 추적 서비스 연결됨", true);
         } else {
@@ -488,6 +526,7 @@ public class MainActivity extends AppCompatActivity {
         // 서비스가 시작되었다면 callback 설정만
         if (isServiceRunning()) {
             Log.d("MainActivity", "서비스 연결 완료");
+            btnAlignment.setEnabled(true);
             btnStartCalibration.setEnabled(true);
             hideProgress();
         } else {
@@ -513,6 +552,7 @@ public class MainActivity extends AppCompatActivity {
     private void hideCalibrationView() {
         runOnUiThread(() -> {
             viewCalibration.setVisibility(View.INVISIBLE);
+            btnAlignment.setEnabled(true);
             btnStartCalibration.setEnabled(true);
             viewPoint.setVisibility(View.VISIBLE);
         });
@@ -610,6 +650,7 @@ public class MainActivity extends AppCompatActivity {
                 viewCalibration.setPointPosition(-9999, -9999);
                 viewCalibration.setEnableText(true);
                 viewPoint.setVisibility(View.INVISIBLE);
+                btnAlignment.setEnabled(false);
                 btnStartCalibration.setEnabled(false);
                 Log.d("MainActivity", "캘리브레이션 UI 설정 완료");
             });

@@ -144,11 +144,11 @@ public class UserSettings {
         private float cursorOffsetX = 0f;
         private float cursorOffsetY = 0f;
 
-        // OneEuroFilter 기본값 - 균형 프리셋
+        // OneEuroFilter 기본값 - 균형 프리셋 (사진의 기본값과 일치)
         private OneEuroFilterPreset oneEuroFilterPreset = OneEuroFilterPreset.BALANCED;
         private double oneEuroFreq = 30.0;
         private double oneEuroMinCutoff = 1.0;
-        private double oneEuroBeta = 0.0;
+        private double oneEuroBeta = 0.007;  // 사진의 기본값으로 변경
         private double oneEuroDCutoff = 1.0;
 
         public Builder() {}

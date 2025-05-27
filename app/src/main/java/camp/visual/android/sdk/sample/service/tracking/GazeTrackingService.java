@@ -93,6 +93,7 @@ public class GazeTrackingService extends Service {
 
         // 초기화
         initRepositories();
+        resetCursorOffset(); // 서비스 시작 시 오프셋 초기화
         initDetectors();
         createNotificationChannel();
         initSystemServices();
@@ -102,21 +103,29 @@ public class GazeTrackingService extends Service {
         // 서비스 실행 상태 확인
         checkAccessibilityService();
 
-        // 자동 1포인트 캘리브레이션 실행 (설정 확인 후)
-        handler.postDelayed(() -> {
-            if (userSettings.isAutoOnePointCalibrationEnabled() &&
-                    trackingRepository != null &&
-                    trackingRepository.getTracker() != null &&
-                    !isCalibrating) {
-                startOnePointCalibrationWithOffset();
-            }
-        }, 3000);
+        // 자동 1포인트 캘리브레이션은 initGazeTracker 콜백에서 처리
     }
 
     private void initRepositories() {
         trackingRepository = new EyedidTrackingRepository();
         settingsRepository = new SharedPrefsSettingsRepository(this);
         userSettings = settingsRepository.getUserSettings();
+    }
+
+    /**
+     * 커서 오프셋을 초기화하는 메서드
+     */
+    private void resetCursorOffset() {
+        Log.d(TAG, "커서 오프셋 초기화 시작");
+        if (settingsRepository instanceof SharedPrefsSettingsRepository) {
+            ((SharedPrefsSettingsRepository) settingsRepository)
+                    .saveIntegratedCursorOffset(0f, 0f);
+            Log.d(TAG, "SharedPreferences에 오프셋 (0, 0) 저장 완료");
+        }
+        // 설정 새로고침
+        userSettings = settingsRepository.getUserSettings();
+        Log.d(TAG, "설정 새로고침 후 오프셋: X=" + userSettings.getCursorOffsetX() +
+                ", Y=" + userSettings.getCursorOffsetY());
     }
 
     private void initDetectors() {
@@ -204,6 +213,12 @@ public class GazeTrackingService extends Service {
                 trackingRepository.setCalibrationCallback(calibrationCallback);
                 trackingRepository.startTracking();
                 Log.d(TAG, "GazeTracker 초기화 성공");
+
+                // 초기화 완료 후 자동 1포인트 캘리브레이션 실행
+                if (userSettings.isAutoOnePointCalibrationEnabled() && !isCalibrating) {
+                    Log.d(TAG, "자동 1포인트 캘리브레이션 시작");
+                    startOnePointCalibrationWithOffset();
+                }
             } else {
                 Log.e(TAG, "GazeTracker 초기화 실패: " + error);
                 Toast.makeText(this, "시선 추적 초기화 실패", Toast.LENGTH_LONG).show();
@@ -211,7 +226,7 @@ public class GazeTrackingService extends Service {
         });
     }
 
-    // 1포인트 캘리브레이션 + 오프셋 계산 메서드 추가
+    // 1포인트 캘리브레이션 + 오프셋 계산 메서드
     public void startOnePointCalibrationWithOffset() {
         Log.d(TAG, "1포인트 캘리브레이션 + 통합 오프셋 정렬 시작");
 
@@ -240,7 +255,7 @@ public class GazeTrackingService extends Service {
         // 안내 메시지
         Toast.makeText(this, "잠시 후 나타나는 점을 응시해주세요", Toast.LENGTH_SHORT).show();
 
-        // 1초 후 캘리브레이션 시작 (수동 포인트 표시 제거)
+        // 2초 후 캘리브레이션 시작 (1초 → 2초로 연장)
         handler.postDelayed(() -> {
             if (trackingRepository.getTracker() != null) {
                 boolean ok = trackingRepository.getTracker().startCalibration(CalibrationModeType.ONE_POINT);
@@ -251,7 +266,7 @@ public class GazeTrackingService extends Service {
                     Log.d(TAG, "1포인트 캘리브레이션 시작 성공");
                 }
             }
-        }, 1000);
+        }, 2000); // 1초 → 2초로 변경
     }
 
     // 통합 오프셋 계산 시작 메서드
@@ -306,33 +321,27 @@ public class GazeTrackingService extends Service {
                         float avgGazeX = sumGazeX / validGazeCount;
                         float avgGazeY = sumGazeY / validGazeCount;
 
-                        // 새로운 자동 오프셋 계산 (목표 위치 - 실제 시선 위치)
-                        float newAutoOffsetX = targetX - avgGazeX;
-                        float newAutoOffsetY = targetY - avgGazeY;
-
-                        // 기존 사용자 오프셋과 새로운 자동 오프셋을 통합
-                        float integratedOffsetX = userSettings.getCursorOffsetX() + newAutoOffsetX;
-                        float integratedOffsetY = userSettings.getCursorOffsetY() + newAutoOffsetY;
+                        // 새로운 오프셋 계산 (목표 위치 - 실제 시선 위치)
+                        float newOffsetX = targetX - avgGazeX;
+                        float newOffsetY = targetY - avgGazeY;
 
                         // 오프셋 유효성 검증 (화면 크기의 30% 이내)
                         float maxOffset = Math.min(screenWidth, screenHeight) * 0.3f;
 
-                        if (Math.abs(integratedOffsetX) <= maxOffset &&
-                                Math.abs(integratedOffsetY) <= maxOffset) {
+                        if (Math.abs(newOffsetX) <= maxOffset &&
+                                Math.abs(newOffsetY) <= maxOffset) {
 
-                            // 통합 오프셋을 설정에 저장
+                            // 새로운 오프셋을 설정에 저장 (기존 오프셋 덮어쓰기)
                             if (settingsRepository instanceof SharedPrefsSettingsRepository) {
                                 ((SharedPrefsSettingsRepository) settingsRepository)
-                                        .saveIntegratedCursorOffset(integratedOffsetX, integratedOffsetY);
+                                        .saveIntegratedCursorOffset(newOffsetX, newOffsetY);
                             }
 
-                            // 설정 새로고침하여 통합 오프셋 적용
+                            // 설정 새로고침하여 새 오프셋 적용
                             refreshSettings();
                             offsetApplied = true;
 
-                            Log.d(TAG, "통합 오프셋 적용 완료: X=" + integratedOffsetX + ", Y=" + integratedOffsetY);
-                            Log.d(TAG, "기존 사용자 오프셋: X=" + userSettings.getCursorOffsetX() + ", Y=" + userSettings.getCursorOffsetY());
-                            Log.d(TAG, "새 자동 오프셋: X=" + newAutoOffsetX + ", Y=" + newAutoOffsetY);
+                            Log.d(TAG, "새 오프셋 적용 완료: X=" + newOffsetX + ", Y=" + newOffsetY);
 
                             Toast.makeText(GazeTrackingService.this, "시선 보정이 완료되었습니다", Toast.LENGTH_SHORT).show();
                         } else {
@@ -644,6 +653,15 @@ public class GazeTrackingService extends Service {
     }
 
     /**
+     * 외부에서 호출 가능한 오프셋 리셋 메서드
+     */
+    public void forceResetCursorOffset() {
+        Log.d(TAG, "외부 요청으로 커서 오프셋 강제 초기화");
+        resetCursorOffset();
+        refreshSettings();
+    }
+
+    /**
      * 현재 서비스 인스턴스를 반환
      */
     public static GazeTrackingService getInstance() {
@@ -691,6 +709,13 @@ public class GazeTrackingService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "서비스 시작됨");
+
+        // 서비스가 재시작될 때도 오프셋 초기화
+        if (intent != null && intent.getBooleanExtra("reset_offset", false)) {
+            Log.d(TAG, "인텐트로부터 오프셋 리셋 요청됨");
+            resetCursorOffset();
+        }
+
         return START_STICKY; // 시스템에 의해 종료되어도 자동 재시작
     }
 
